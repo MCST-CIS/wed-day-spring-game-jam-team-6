@@ -1,0 +1,4013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Two of a Hue</title>
+<style>
+  :root {
+    --bg: #07070a;
+    --fg: #ececec;
+    --dim: #6a6a72;
+    --line: #1c1c22;
+    --panel: #0f0f14;
+    --gold: #ffd668;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(ellipse at top, #15151c 0%, var(--bg) 60%) fixed,
+      var(--bg);
+    color: var(--fg);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 22px 14px 36px;
+    min-height: 100%;
+  }
+  h1 {
+    margin: 0 0 6px;
+    font-size: 26px;
+    font-weight: 200;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    text-shadow: 0 0 30px rgba(255,255,255,0.06);
+  }
+  .subtitle {
+    margin: 0 0 18px;
+    color: var(--dim);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    font-style: italic;
+  }
+  .main { display: flex; gap: 20px; align-items: flex-start; max-width: 100%; flex-wrap: wrap; justify-content: center; }
+  .stage { position: relative; line-height: 0; }
+  canvas {
+    display: block;
+    background: #0d0d12;
+    border: 1px solid var(--line);
+    box-shadow: 0 0 80px rgba(255,255,255,0.03), 0 30px 60px rgba(0,0,0,0.6);
+    image-rendering: pixelated;
+    max-width: 100%;
+    height: auto;
+  }
+  .shop {
+    width: 280px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 14px 14px 18px;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--fg);
+    max-height: 600px;
+    overflow-y: auto;
+  }
+  .shop::-webkit-scrollbar { width: 6px; }
+  .shop::-webkit-scrollbar-thumb { background: #2a2a32; border-radius: 3px; }
+  .shop h2 { font-size: 11px; letter-spacing: 0.25em; color: var(--dim); margin: 14px 0 6px; text-transform: uppercase; font-weight: 400; }
+  .shop h2:first-child { margin-top: 0; }
+  .money-row { display: flex; justify-content: space-between; align-items: center; background: #1a1a22; border: 1px solid #25252e; border-radius: 3px; padding: 8px 10px; margin-bottom: 4px; font-size: 13px; }
+  .money-row .amt { color: var(--gold); font-weight: 600; }
+  .shop-item { background: #14141a; border: 1px solid #20202a; padding: 7px 9px; border-radius: 3px; margin-bottom: 5px; cursor: pointer; transition: border-color 0.15s, background 0.15s, transform 0.05s; user-select: none; display: grid; grid-template-columns: 1fr auto; column-gap: 6px; align-items: center; }
+  .shop-item:hover { border-color: #353540; background: #181820; }
+  .shop-item:active { transform: translateY(1px); }
+  .shop-item.owned { background: #161b18; border-color: #2c402d; }
+  .shop-item.equipped { border-color: #4f8a52; }
+  .shop-item.disabled { cursor: default; opacity: 0.45; }
+  .shop-item.disabled:hover { border-color: #20202a; background: #14141a; }
+  .shop-item .name { font-size: 11.5px; }
+  .shop-item .desc { font-size: 10px; color: var(--dim); grid-column: 1 / -1; margin-top: 2px; line-height: 1.3; }
+  .shop-item .cost { color: var(--gold); font-weight: 600; font-size: 11px; }
+  .shop-item .lvl { color: #aaa; font-size: 10px; }
+  .badges { display: flex; flex-wrap: wrap; gap: 4px; }
+  .badge { padding: 3px 7px; border-radius: 3px; background: #1a1a22; border: 1px solid #2c2c36; font-size: 10px; line-height: 1.2; }
+  .badge.empty { color: #444; font-style: italic; border-style: dashed; }
+  .hud { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 10px; width: 100%; max-width: 1280px; margin-top: 12px; font-size: 12px; line-height: 1.4; }
+  .hud > div { padding: 9px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; }
+  .hud-center { text-align: center; }
+  kbd { display: inline-block; padding: 1px 6px; font-size: 10.5px; border: 1px solid #2c2c34; border-bottom-width: 2px; border-radius: 3px; background: #16161c; color: #ddd; font-family: inherit; margin: 0 1px; }
+  .controls { margin-top: 14px; color: var(--dim); font-size: 11.5px; max-width: 1280px; width: 100%; line-height: 1.85; text-align: center; padding: 10px 14px; border: 1px dashed #1f1f26; border-radius: 4px; }
+  .controls em { color: #cfcfcf; font-style: normal; }
+  .controls .small { font-size: 10.5px; opacity: 0.75; }
+  .footer { color: #3c3c44; font-size: 10px; margin-top: 18px; letter-spacing: 0.2em; text-transform: uppercase; }
+  .reset-btn { width: 100%; background: #1d1418; border: 1px solid #4a2730; color: #d88; padding: 8px 10px; font-size: 11px; cursor: pointer; font-family: inherit; border-radius: 3px; margin-top: 16px; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 600; }
+  .reset-btn:hover { background: #3a1820; color: #ff8a8a; border-color: #883a3a; }
+
+  /* Admin panel */
+  #admin {
+    display: none;
+    position: fixed;
+    top: 16px; right: 16px;
+    width: 320px;
+    max-height: 90vh;
+    overflow-y: auto;
+    background: rgba(8,8,12,0.96);
+    border: 2px solid #6a4f1f;
+    border-radius: 6px;
+    padding: 14px;
+    z-index: 10000;
+    font-size: 11.5px;
+    line-height: 1.55;
+    color: #ddd;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.7);
+  }
+  #admin.show { display: block; }
+  #admin h3 { margin: 0 0 10px; font-size: 12px; letter-spacing: 0.2em; color: var(--gold); text-transform: uppercase; }
+  #admin h4 { margin: 12px 0 4px; font-size: 10px; letter-spacing: 0.25em; color: var(--dim); text-transform: uppercase; font-weight: 400; }
+  #admin .row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
+  #admin button {
+    background: #1a1a22;
+    border: 1px solid #2c2c36;
+    color: #ccc;
+    padding: 3px 8px;
+    font-size: 10.5px;
+    cursor: pointer;
+    font-family: inherit;
+    border-radius: 3px;
+  }
+  #admin button:hover { background: #25252e; border-color: #4a4a55; }
+  #admin button.on { background: #2c402d; border-color: #4f8a52; color: #d8f4d8; }
+  #admin .info { color: var(--dim); font-size: 10px; margin-top: 8px; line-height: 1.4; }
+  #admin input { background: #15151c; border: 1px solid #2c2c34; color: #fff; padding: 2px 6px; width: 70px; font-family: inherit; font-size: 11px; border-radius: 2px; }
+
+  /* achievement popup */
+  #ach-popup {
+    display: none;
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.94);
+    border: 2px solid var(--gold);
+    border-radius: 6px;
+    padding: 14px 24px;
+    z-index: 9000;
+    min-width: 320px;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(255, 214, 104, 0.35), 0 0 60px rgba(255,214,104,0.15);
+    animation: achSlideIn 0.4s ease;
+  }
+  #ach-popup.fade { animation: achFadeOut 0.6s ease forwards; }
+  #ach-popup .label { color: var(--gold); font-size: 10px; letter-spacing: 0.32em; margin-bottom: 6px; font-weight: 600; }
+  #ach-popup .name  { color: #fff; font-size: 17px; font-weight: 500; margin-bottom: 4px; letter-spacing: 0.05em; }
+  #ach-popup .desc  { color: #aaa; font-size: 11.5px; }
+  #ach-popup.secret { border-color: #b35cff; box-shadow: 0 10px 40px rgba(179, 92, 255, 0.4), 0 0 80px rgba(179,92,255,0.2); }
+  #ach-popup.secret .label { color: #d28cff; }
+  @keyframes achSlideIn { from { transform: translate(-50%, -40px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+  @keyframes achFadeOut { to { opacity: 0; transform: translate(-50%, -14px); } }
+
+  /* achievements in shop */
+  .ach-item {
+    background: #14141a;
+    border: 1px solid #20202a;
+    padding: 6px 9px;
+    border-radius: 3px;
+    margin-bottom: 4px;
+    opacity: 0.55;
+  }
+  .ach-item .name { font-size: 11px; }
+  .ach-item .desc { font-size: 10px; color: var(--dim); margin-top: 1px; line-height: 1.3; }
+  .ach-item.earned { background: #1a1f1a; border-color: #2c5236; opacity: 1; }
+  .ach-item.earned .name { color: #d8f4d8; }
+  .ach-item.secret { background: #1a141a; border-color: #3a2030; }
+  .ach-item.earned.secret { background: linear-gradient(90deg, #2a1a2a, #1a142a); border-color: #b35cff; }
+  .ach-item.earned.secret .name { color: #fff; }
+
+  /* tabs */
+  .tabs { display: flex; gap: 0; margin-bottom: 12px; border-bottom: 1px solid #20202a; }
+  .tab { flex: 1; padding: 8px 0; cursor: pointer; color: var(--dim); font-size: 10.5px; letter-spacing: 0.18em; text-align: center; border-bottom: 2px solid transparent; transition: all 0.15s; user-select: none; text-transform: uppercase; }
+  .tab:hover { color: #ccc; }
+  .tab.active { color: var(--fg); border-bottom-color: var(--gold); }
+  .tab .badge-num { display: inline-block; margin-left: 4px; padding: 0 5px; border-radius: 8px; background: #2a2a32; color: #ccc; font-size: 9px; }
+  .rare-banner {
+    background: linear-gradient(90deg, #2a1a3a, #3a2a5a);
+    border: 1px solid #6a4f9a;
+    color: #d8c8ff;
+    padding: 6px 10px;
+    border-radius: 3px;
+    margin-bottom: 8px;
+    font-size: 10.5px;
+    text-align: center;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    box-shadow: 0 0 20px rgba(106, 79, 154, 0.3);
+  }
+  .rare-locked-note {
+    color: var(--dim);
+    font-size: 10px;
+    margin: 4px 0 6px;
+    font-style: italic;
+  }
+  .shop-item.rare { background: #1a1424; border-color: #3a2848; }
+  .shop-item.rare .name { color: #d8c8ff; }
+  .shop-item.rare:hover { border-color: #6a4f9a; background: #1f1828; }
+  .shop-item.rare.disabled { opacity: 0.4; }
+
+  /* hazard tile */
+  .hazard-marker { color: #f88; }
+
+  /* RAINBOW background — earned by All The Colors */
+  body.rainbow {
+    background: linear-gradient(45deg, #ff4554, #ff8a1f, #ffd23a, #3ed26b, #3a8aff, #b35cff, #ff4554) !important;
+    background-size: 400% 400% !important;
+    animation: rainbowShift 14s ease infinite !important;
+  }
+  body.rainbow h1 {
+    background: linear-gradient(90deg, #ff4554, #ff8a1f, #ffd23a, #3ed26b, #3a8aff, #b35cff, #ff4554);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    background-size: 200% auto;
+    animation: rainbowShift 4s linear infinite;
+    text-shadow: none;
+  }
+  body.rainbow .subtitle { color: #f0e8ff; }
+  body.rainbow canvas { box-shadow: 0 0 80px rgba(255,255,255,0.18), 0 30px 60px rgba(0,0,0,0.4); }
+  @keyframes rainbowShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+</style>
+</head>
+<body>
+  <h1>Two&nbsp;of&nbsp;a&nbsp;Hue</h1>
+  <div class="subtitle">a cooperative game in black, white, and the colors you make · better together</div>
+
+  <div class="main">
+    <div class="stage">
+      <canvas id="game" width="960" height="600" tabindex="0"></canvas>
+    </div>
+    <aside class="shop" id="shop"></aside>
+  </div>
+
+  <div class="hud">
+    <div id="hud-painter">PAINTER</div>
+    <div id="hud-center" class="hud-center">Level 1</div>
+    <div id="hud-mixer">MIXER</div>
+  </div>
+
+  <div class="controls">
+    <em>PAINTER</em> &nbsp; <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move &nbsp;&nbsp; <kbd>R</kbd> red &nbsp; <kbd>E</kbd> yellow &nbsp; <kbd>Q</kbd> blue<br>
+    <em>MIXER</em> &nbsp; <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> move <span class="small">(hold two for diagonal zigzag)</span> &nbsp;&nbsp; <kbd>Shift</kbd> drop carried &nbsp;&nbsp; <kbd>/</kbd> subtract <span class="small">(power-up)</span> &nbsp;&nbsp; <kbd>X</kbd> open shop <span class="small">(rare shop levels)</span><br>
+    walk a primary while empty to <em>pick up</em> · walk a different primary while carrying to <em>mix</em> · paint a gate's secondary next to it to open it<br>
+    every 5 lvls: <em>mini-boss</em> · every 10: <em>boss</em> (drops a power-up + unlocks white at lvl 10) · every 50: <em>ULTRA</em> (only white damages it) · on death: <kbd>R</kbd> restart or <kbd>C</kbd> continue from checkpoint · <kbd>Space</kbd> to skip the level-clear pause
+  </div>
+  <div class="footer">two players · one keyboard · infinite levels · press <kbd>`</kbd> for admin</div>
+
+  <div id="admin"></div>
+  <div id="ach-popup"></div>
+
+<script>
+'use strict';
+
+// ============== canvas ==============
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+canvas.focus();
+canvas.addEventListener('click', (e) => {
+  canvas.focus();
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width * canvas.width;
+  const y = (e.clientY - rect.top) / rect.height * canvas.height;
+  // triple-mix modal takes priority — any click anywhere on/inside the OK button dismisses it
+  if (tripleMixModalOpen) {
+    const r = tripleMixModalRect();
+    if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
+      tripleMixModalOpen = false;
+    }
+    return;
+  }
+  if (rareShopOpen) {
+    const cb = rareShopCloseRect();
+    if (x >= cb.x && x <= cb.x + cb.w && y >= cb.y && y <= cb.y + cb.h) { rareShopOpen = false; return; }
+    // overlay tab clicks
+    const tabs = ['upgrades', 'skins'];
+    for (let i = 0; i < tabs.length; i++) {
+      const r = rareShopTabRect(i);
+      if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
+        rareShopOverlayTab = tabs[i];
+        rareShopHover = -1;
+        return;
+      }
+    }
+    const items = rareShopItems();
+    for (let i = 0; i < items.length; i++) {
+      const r = rareShopItemRect(i);
+      if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
+        const it = items[i];
+        if (it.kind === 'upgrade') buyUpgrade(it.data.id);
+        else if (save.ownedSkins.includes(it.data.id)) equipSkin(it.data.id);
+        else buySkin(it.data.id);
+        return;
+      }
+    }
+    // click outside cards/close = also close (but inside the dimmed area)
+    rareShopOpen = false;
+    return;
+  }
+  if (rareShopBlock) {
+    const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
+    if (tx === rareShopBlock.x && ty === rareShopBlock.y && playerNearShopBlock()) {
+      rareShopOpen = true;
+    }
+  }
+});
+canvas.addEventListener('mousemove', (e) => {
+  if (!rareShopOpen) { rareShopHover = -1; return; }
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width * canvas.width;
+  const y = (e.clientY - rect.top) / rect.height * canvas.height;
+  rareShopHover = -1;
+  const items = rareShopItems();
+  for (let i = 0; i < items.length; i++) {
+    const r = rareShopItemRect(i);
+    if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) { rareShopHover = i; break; }
+  }
+});
+
+const TILE = 30;
+const GW = 32;
+const GH = 20;
+
+// ============== tile types ==============
+const T_FLOOR = 0;
+const T_WALL  = 1;
+const T_GATE  = 2;
+const T_EXIT  = 3;
+
+// ============== paint colors ==============
+const P_NONE = 0;
+const P_R = 1;
+const P_Y = 2;
+const P_B = 3;
+const P_O = 4;
+const P_G = 5;
+const P_P = 6;
+const P_W = 7;
+const P_K = 8;
+
+const PAINT_COLOR = {
+  [P_R]: '#ff4554', [P_Y]: '#ffd23a', [P_B]: '#3a8aff',
+  [P_O]: '#ff8a1f', [P_G]: '#3ed26b', [P_P]: '#b35cff',
+  [P_W]: '#ffffff', [P_K]: '#0b0b10',
+};
+const PAINT_NAME = {
+  [P_R]: 'red', [P_Y]: 'yellow', [P_B]: 'blue',
+  [P_O]: 'orange', [P_G]: 'green', [P_P]: 'purple',
+  [P_W]: 'white', [P_K]: 'black',
+};
+const isPrimary   = c => c === P_R || c === P_Y || c === P_B;
+const isSecondary = c => c === P_O || c === P_G || c === P_P;
+
+function mix(a, b) {
+  if (a === b) return a;
+  const s = new Set([a, b]);
+  if (s.has(P_R) && s.has(P_Y)) return P_O;
+  if (s.has(P_Y) && s.has(P_B)) return P_G;
+  if (s.has(P_R) && s.has(P_B)) return P_P;
+  return null;
+}
+function tripleMix(a, b) {
+  const sec = isSecondary(a) ? a : (isSecondary(b) ? b : null);
+  const pri = isPrimary(a) ? a : (isPrimary(b) ? b : null);
+  if (sec === null || pri === null) return null;
+  if (sec === P_O && pri === P_B) return P_W;
+  if (sec === P_G && pri === P_R) return P_W;
+  if (sec === P_P && pri === P_Y) return P_W;
+  return null;
+}
+function complement(c) {
+  if (c === P_R) return P_G;
+  if (c === P_Y) return P_P;
+  if (c === P_B) return P_O;
+  if (c === P_O) return P_B;
+  if (c === P_G) return P_R;
+  if (c === P_P) return P_Y;
+  return P_NONE;
+}
+function subtractFromSecondary(carry, sec) {
+  if (sec === P_O && carry === P_R) return P_Y;
+  if (sec === P_O && carry === P_Y) return P_R;
+  if (sec === P_G && carry === P_Y) return P_B;
+  if (sec === P_G && carry === P_B) return P_Y;
+  if (sec === P_P && carry === P_R) return P_B;
+  if (sec === P_P && carry === P_B) return P_R;
+  return null;
+}
+
+// ============== save ==============
+const SAVE_KEY = 'better-together-save-v3';
+const DEFAULT_SAVE = {
+  money: 0,
+  level: 1,
+  highest: 1,
+  totalScore: 0,
+  upgrades: { speed: 0, money: 0, bossDmg: 0, bond: 0, hp: 0, heal: 0 },
+  permaUps: [],
+  activeUps: [],
+  ownedSkins: ['painter-classic', 'mixer-classic'],
+  painterSkin: 'painter-classic',
+  mixerSkin: 'mixer-classic',
+  tripleUnlocked: false,
+  painterHp: 3,
+  mixerHp: 3,
+  highestCheckpoint: 0,
+  upgradeTokens: 0,
+  achievements: {},
+  stats: {
+    totalEarned: 0,
+    primariesPlaced: 0,
+    secondariesMixed: 0,
+    whitesMade: 0,
+    subtracted: 0,
+    bondTime: 0,
+    bossesDefeated: 0,
+    miniBossesDefeated: 0,
+    ultrasDefeated: 0,
+    deaths: 0,
+    upgradesBought: 0,
+    totalUpgradeSpent: 0,
+    enemiesKilled: 0,
+    coinsCollected: 0,
+    normalLevelsCompleted: 0,
+  },
+};
+let save = JSON.parse(JSON.stringify(DEFAULT_SAVE));
+function saveGame() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
+function loadGame() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (raw) {
+      const s = JSON.parse(raw);
+      save = Object.assign({}, DEFAULT_SAVE, s);
+      save.upgrades = Object.assign({}, DEFAULT_SAVE.upgrades, s.upgrades || {});
+      save.achievements = Object.assign({}, DEFAULT_SAVE.achievements, s.achievements || {});
+      save.stats = Object.assign({}, DEFAULT_SAVE.stats, s.stats || {});
+    }
+  } catch (e) {}
+}
+function resetSave() {
+  if (!confirm('Reset all progress (money, upgrades, level, achievements)?')) return;
+  save = JSON.parse(JSON.stringify(DEFAULT_SAVE));
+  saveGame();
+  applyRainbow(false);
+  level = 1;
+  genLevel(1);
+  renderShop();
+}
+
+// ============== upgrades / power-ups ==============
+const UPGRADES = [
+  // NORMAL — buy any time
+  { id: 'speed',     name: 'Quick Step',  desc: '+8% movement speed (compounds)',     baseCost: 60,  mult: 1.55, rare: false },
+  { id: 'money',     name: 'Profiteer',   desc: '+25% money earned (per tier)',       baseCost: 80,  mult: 1.65, rare: false },
+  { id: 'bond',      name: 'Long Bond',   desc: '+1 bond range',                      baseCost: 100, mult: 1.5,  rare: false },
+  { id: 'hp',        name: 'Hardy',       desc: '+1 max HP for both players',         baseCost: 220, mult: 1.7,  rare: false },
+  { id: 'heal',      name: 'Recover',     desc: 'restore +1 HP at the start of every level', baseCost: 320, mult: 1.85, rare: false },
+  { id: 'magnet',    name: 'Coin Magnet', desc: '+1 coin pickup range (per tier)',    baseCost: 150, mult: 1.6,  rare: false },
+  { id: 'startCoin', name: 'Lucky Start', desc: '+5 coins each new level',            baseCost: 180, mult: 1.55, rare: false },
+  // RARE — only at rare shops
+  { id: 'bossDmg',     name: 'Critical Strike', desc: '+1 damage per complement hit',         baseCost: 800,  mult: 1.9,  rare: true },
+  { id: 'painterReach',name: 'Long Brush',      desc: 'painter also paints the tile in front of them', baseCost: 1200, mult: 2.0,  rare: true },
+  { id: 'mixerReach',  name: 'Pull Color',      desc: 'mixer can pick up paint from 1 tile away',     baseCost: 1500, mult: 2.0,  rare: true },
+  { id: 'critGate',    name: 'Lock Pick',       desc: '5% chance per gate to open already-open',      baseCost: 1000, mult: 1.7,  rare: true },
+  { id: 'doubler',     name: 'Lucky Streak',    desc: '5% chance to double a level\'s reward',        baseCost: 2000, mult: 1.95, rare: true },
+  { id: 'shieldUp',    name: 'Iron Skin',       desc: '+0.4 sec invulnerability after a hit',         baseCost: 1500, mult: 1.7,  rare: true },
+  { id: 'enemyMoney',  name: 'Bounty Hunter',   desc: '+50% money from minion kills (per tier)',      baseCost: 900,  mult: 1.7,  rare: true },
+];
+function upgradeCost(up, tier) { return Math.floor(up.baseCost * Math.pow(up.mult, tier)); }
+
+const ACTIVE_POOL = [
+  { id: 'paint3x3',     name: 'Big Brush',     desc: 'painter drops a 3×3 splash' },
+  { id: 'holdPaint',    name: 'Auto Spray',    desc: 'hold a paint key to keep painting' },
+  { id: 'whitePickup',  name: 'White Hand',    desc: 'mixer can pick up white tiles' },
+  { id: 'subtract',     name: 'Color Eater',   desc: 'X subtracts: same color erases the tile (or makes black with Wallrender)' },
+  { id: 'wallBreak',    name: 'Black Wedge',   desc: 'black tiles dissolve adjacent walls' },
+  { id: 'quickStep',    name: 'Surge',         desc: '+25% movement speed for the run' },
+  { id: 'extendBond',   name: 'Wide Bond',     desc: '+2 bond range for the run' },
+  { id: 'bossDoubleDmg',name: 'Double Tap',    desc: 'each complement hit on a boss does 2 damage' },
+  { id: 'autoMix',      name: 'Auto-Mix',      desc: 'mixer auto-mixes adjacent paint when standing still' },
+];
+const PERMA_POOL = [
+  { id: 'permaSpeed',   name: 'Eternal Surge', desc: 'permanent +20% speed' },
+  { id: 'permaWalls',   name: 'Wallrender',    desc: 'permanent black tiles + wall break' },
+  { id: 'permaTrail',   name: 'Trail of Hue',  desc: 'painter trails their last paint colour while moving' },
+  { id: 'permaPalette', name: 'Catalyst',      desc: 'mixing no longer consumes the mixer\'s carried color' },
+  { id: 'permaSpray',   name: 'Eternal Brush', desc: 'permanent 3×3 painter splash' },
+  { id: 'permaWhite',   name: 'Pure Hand',     desc: 'permanent white pickup' },
+];
+const ACHIEVEMENTS = [
+  // progression
+  { id: 'firstSteps',    name: 'First Steps',        desc: 'Finish the tutorial',                 check: () => save.highest >= 2 },
+  { id: 'fivealive',     name: 'Five Alive',         desc: 'Reach level 5',                       check: () => save.highest >= 5 },
+  { id: 'doubleDigits',  name: 'Double Digits',      desc: 'Reach level 10',                      check: () => save.highest >= 10 },
+  { id: 'quarter',       name: 'Quarter Century',    desc: 'Reach level 25',                      check: () => save.highest >= 25 },
+  { id: 'halfCentury',   name: 'Half Century',       desc: 'Reach level 50',                      check: () => save.highest >= 50 },
+  { id: 'centurion',     name: 'Centurion',          desc: 'Reach level 100',                     check: () => save.highest >= 100 },
+  // bosses
+  { id: 'firstBlood',    name: 'First Blood',        desc: 'Defeat your first mini-boss',         check: () => save.stats.miniBossesDefeated >= 1 },
+  { id: 'trinity',       name: 'Trinity',            desc: 'Defeat your first full boss',         check: () => save.stats.bossesDefeated >= 1 },
+  { id: 'tripleThreat',  name: 'Triple Threat',      desc: 'Unlock triple-mix',                   check: () => save.tripleUnlocked },
+  { id: 'intoBlack',     name: 'Into the Black',     desc: 'Defeat your first ULTRA boss',        check: () => save.stats.ultrasDefeated >= 1 },
+  { id: 'eternalChamp',  name: 'Eternal Champion',   desc: 'Defeat 5 ULTRA bosses',               check: () => save.stats.ultrasDefeated >= 5 },
+  // wealth
+  { id: 'pocketChange',  name: 'Pocket Change',      desc: 'Earn $1,000 total',                   check: () => save.stats.totalEarned >= 1000 },
+  { id: 'tycoon',        name: 'Tycoon',             desc: 'Earn $10,000 total',                  check: () => save.stats.totalEarned >= 10000 },
+  { id: 'moneyBin',      name: 'Money Bin',          desc: 'Earn $100,000 total',                 check: () => save.stats.totalEarned >= 100000 },
+  // actions
+  { id: 'painterTouch',  name: "Painter's Touch",    desc: 'Place 100 primary tiles',             check: () => save.stats.primariesPlaced >= 100 },
+  { id: 'mixmaster',     name: 'Mixmaster',          desc: 'Mix 50 secondary colors',             check: () => save.stats.secondariesMixed >= 50 },
+  { id: 'pureLight',     name: 'Pure Light',         desc: 'Create 10 white tiles',               check: () => save.stats.whitesMade >= 10 },
+  { id: 'eraser',        name: 'Eraser',             desc: 'Subtract 25 colors',                  check: () => save.stats.subtracted >= 25 },
+  // cooperation
+  { id: 'bound',         name: 'Bound',              desc: 'Stay bonded for 60 seconds total',    check: () => save.stats.bondTime >= 60 },
+  // resilience
+  { id: 'phoenix',       name: 'Phoenix',            desc: 'Die, then climb back to level 10+',   check: () => save.stats.deaths >= 1 && save.highest >= 10 },
+  { id: 'pacifist',      name: 'Pacifist',           desc: 'Reach level 25 without dying',        check: () => save.highest >= 25 && save.stats.deaths === 0 },
+  // shop
+  { id: 'firstInvest',   name: 'First Investment',   desc: 'Buy your first upgrade',              check: () => save.stats.upgradesBought >= 1 },
+  { id: 'bigSpender',    name: 'Big Spender',        desc: 'Spend $5,000 on upgrades',            check: () => save.stats.totalUpgradeSpent >= 5000 },
+  { id: 'fashionista',   name: 'Fashionista',        desc: 'Own every skin',                      check: () => save.ownedSkins.length >= SKINS.length },
+  { id: 'permaCollect',  name: 'Eternal Collection', desc: 'Earn every permanent reward',         check: () => save.permaUps.length >= PERMA_POOL.length },
+  // post-boss content
+  { id: 'pestControl',   name: 'Pest Control',       desc: 'Kill 25 minions',                     check: () => (save.stats.enemiesKilled || 0) >= 25 },
+  { id: 'exterminator',  name: 'Exterminator',       desc: 'Kill 200 minions',                    check: () => (save.stats.enemiesKilled || 0) >= 200 },
+  { id: 'collector',     name: 'Collector',          desc: 'Pick up 50 coins',                    check: () => (save.stats.coinsCollected || 0) >= 50 },
+  // SECRET
+  { id: 'allColors',     name: 'All The Colors',     desc: 'Earn every other achievement',        secret: true, check: () => false },
+];
+
+const SKINS = [
+  // NORMAL — buy any time
+  { id: 'painter-classic', kind: 'painter', name: 'Painter · Classic',  cost: 0,     shape: 'circle',   rare: false },
+  { id: 'painter-square',  kind: 'painter', name: 'Painter · Boxer',    cost: 1500,  shape: 'square',   rare: false },
+  { id: 'painter-drop',    kind: 'painter', name: 'Painter · Droplet',  cost: 3500,  shape: 'drop',     rare: false },
+  { id: 'painter-tri',     kind: 'painter', name: 'Painter · Triangle', cost: 6000,  shape: 'triangle', rare: false },
+  { id: 'mixer-classic',   kind: 'mixer',   name: 'Mixer · Classic',    cost: 0,     shape: 'diamond',  rare: false },
+  { id: 'mixer-circle',    kind: 'mixer',   name: 'Mixer · Orb',        cost: 1500,  shape: 'circle',   rare: false },
+  { id: 'mixer-tri',       kind: 'mixer',   name: 'Mixer · Pyramid',    cost: 3500,  shape: 'triangle', rare: false },
+  { id: 'mixer-hex',       kind: 'mixer',   name: 'Mixer · Hex',        cost: 6000,  shape: 'hex',      rare: false },
+  // RARE — only at rare shops
+  { id: 'painter-star',    kind: 'painter', name: 'Painter · Star',     cost: 18000, shape: 'star',     rare: true },
+  { id: 'painter-bolt',    kind: 'painter', name: 'Painter · Bolt',     cost: 28000, shape: 'bolt',     rare: true },
+  { id: 'painter-crown',   kind: 'painter', name: 'Painter · Crown',    cost: 45000, shape: 'crown',    rare: true },
+  { id: 'mixer-spinner',   kind: 'mixer',   name: 'Mixer · Spinner',    cost: 18000, shape: 'spinner',  rare: true },
+  { id: 'mixer-snow',      kind: 'mixer',   name: 'Mixer · Snowflake',  cost: 28000, shape: 'snow',     rare: true },
+  { id: 'mixer-gear',      kind: 'mixer',   name: 'Mixer · Gear',       cost: 45000, shape: 'gear',     rare: true },
+];
+
+const MODIFIERS = [
+  { id: 'mirror', name: 'Mirror',     desc: 'movement is mirrored — up is down, left is right' },
+  { id: 'icy',    name: 'Icy Floor',  desc: 'movement slides one extra tile in the same direction' },
+  { id: 'dark',   name: 'Dark',       desc: 'only a small lit area around each player is visible' },
+];
+function modifierById(id) { return MODIFIERS.find(m => m.id === id) || null; }
+
+// deterministic per-level random for choosing rare-shop / modifier slots
+function levelSeed(n, salt = 0) {
+  let h = (n * 2654435761 + salt * 374761393) >>> 0;
+  h ^= h >>> 16; h = Math.imul(h, 2246822507) >>> 0;
+  h ^= h >>> 13; h = Math.imul(h, 3266489917) >>> 0;
+  h ^= h >>> 16;
+  return (h >>> 0) / 0x100000000;
+}
+
+function permaToActive(permaId) {
+  if (permaId === 'permaSpeed')  return 'quickStep';
+  if (permaId === 'permaWalls')  return 'wallBreak';
+  if (permaId === 'permaSpray')  return 'paint3x3';
+  if (permaId === 'permaWhite')  return 'whitePickup';
+  return null;
+}
+function abilityActive(id) {
+  if (save.activeUps.includes(id)) return true;
+  if (save.permaUps.includes(id)) return true;
+  for (const p of save.permaUps) if (permaToActive(p) === id) return true;
+  return false;
+}
+
+// ============== state ==============
+let level = save.level;
+let map, paint, gates, exitTiles;
+let painter, mixer;
+let boss = null;
+let enemies = [];
+let coins = [];
+let chests = [];
+let floatTexts = [];
+let hazards = [];
+let particles = [];
+let currentModifier = null;
+let levelStartT = 0;
+let levelElapsed = 0;
+let icyMomentum = { painter: null, mixer: null };
+let rareShopBlock = null;       // { x, y } when on a rare-shop level
+let rareShopOpen = false;       // whether the in-game overlay is showing
+let rareShopHover = -1;         // hovered overlay item index
+let rareShopOverlayTab = 'upgrades'; // 'upgrades' | 'skins'
+let _modOff = null;             // offscreen canvas reused for fog/dark masking
+let levelDone = false;
+let levelDoneTimer = 0;
+let message = '';
+let messageTimer = 0;
+let bondGlow = 0;
+let timeNow = 0;
+let levelKind = 'tutorial';
+let unlockBanner = 0;
+let unlockBannerInfo = null;   // { title, name, desc, accent }
+let pendingFullReset = 0;
+let deathScreen = false;       // shows R / C choice after death
+let tripleMixModalOpen = false; // post-lvl-10 tutorial modal · pauses level advance
+let earnedThisLevel = 0;
+let invincible = false; // admin flag
+let achievementQueue = [];
+let currentAch = null;
+let currentAchTimer = 0;
+const popupEl = document.getElementById('ach-popup');
+
+function unlockAchievement(id) {
+  if (save.achievements[id]) return;
+  const a = ACHIEVEMENTS.find(x => x.id === id);
+  if (!a) return;
+  save.achievements[id] = true;
+  achievementQueue.push(a);
+  if (id === 'allColors') applyRainbow(true);
+  saveGame();
+}
+function checkAchievements() {
+  for (const a of ACHIEVEMENTS) {
+    if (a.id === 'allColors') continue;
+    if (save.achievements[a.id]) continue;
+    try { if (a.check()) unlockAchievement(a.id); } catch (e) {}
+  }
+  if (!save.achievements.allColors) {
+    const others = ACHIEVEMENTS.filter(a => a.id !== 'allColors');
+    if (others.every(a => save.achievements[a.id])) unlockAchievement('allColors');
+  }
+}
+function applyRainbow(on) {
+  document.body.classList.toggle('rainbow', !!on);
+}
+function tickAchievementPopup(dt) {
+  if (currentAch) {
+    currentAchTimer -= dt;
+    if (currentAchTimer <= 0.6 && !popupEl.classList.contains('fade')) {
+      popupEl.classList.add('fade');
+    }
+    if (currentAchTimer <= 0) {
+      currentAch = null;
+      popupEl.style.display = 'none';
+      popupEl.classList.remove('fade', 'secret');
+    }
+  }
+  if (!currentAch && achievementQueue.length > 0) {
+    currentAch = achievementQueue.shift();
+    currentAchTimer = currentAch.id === 'allColors' ? 6 : 4;
+    const isSecret = currentAch.id === 'allColors';
+    popupEl.className = isSecret ? 'secret' : '';
+    popupEl.innerHTML = `
+      <div class="label">${isSecret ? '★  SECRET ACHIEVEMENT  ★' : 'Achievement Unlocked'}</div>
+      <div class="name">${currentAch.name}</div>
+      <div class="desc">${currentAch.desc}</div>
+    `;
+    popupEl.style.display = 'block';
+  }
+}
+
+// ============== input ==============
+const keys = {};
+const keysJustPressed = {};
+window.addEventListener('keydown', e => {
+  if (e.code === 'Backquote') {
+    e.preventDefault();
+    toggleAdmin();
+    return;
+  }
+  if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'BUTTON')) {
+    if (e.code === 'Escape') document.activeElement.blur();
+    return;
+  }
+  if (!keys[e.code]) keysJustPressed[e.code] = true;
+  keys[e.code] = true;
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+function consume(code) { const v = !!keysJustPressed[code]; keysJustPressed[code] = false; return v; }
+
+// ============== helpers ==============
+function inBounds(x, y) { return x >= 0 && x < GW && y >= 0 && y < GH; }
+function makeGrid(val) { return Array.from({length: GH}, () => Array(GW).fill(val)); }
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function gateAt(x, y) { return gates.find(g => g.x === x && g.y === y); }
+
+function isPassable(x, y) {
+  if (!inBounds(x, y)) return false;
+  const t = map[y][x];
+  if (t === T_WALL) return false;
+  if (t === T_GATE) {
+    const g = gateAt(x, y);
+    return !!(g && g.open);
+  }
+  return true;
+}
+function bfsFloorDist(sx, sy) {
+  const dist = makeGrid(-1);
+  dist[sy][sx] = 0;
+  const q = [[sx, sy]];
+  let h = 0;
+  while (h < q.length) {
+    const [x, y] = q[h++];
+    for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+      const nx = x + dx, ny = y + dy;
+      if (inBounds(nx, ny) && map[ny][nx] === T_FLOOR && dist[ny][nx] === -1) {
+        dist[ny][nx] = dist[y][x] + 1;
+        q.push([nx, ny]);
+      }
+    }
+  }
+  return dist;
+}
+function reachableWithGatesClosed(sx, sy, tx, ty) {
+  const seen = makeGrid(false);
+  seen[sy][sx] = true;
+  const q = [[sx, sy]];
+  let h = 0;
+  while (h < q.length) {
+    const [x, y] = q[h++];
+    if (x === tx && y === ty) return true;
+    for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+      const nx = x + dx, ny = y + dy;
+      if (!inBounds(nx, ny) || seen[ny][nx]) continue;
+      const t = map[ny][nx];
+      if (t === T_FLOOR || t === T_EXIT) {
+        seen[ny][nx] = true;
+        q.push([nx, ny]);
+      }
+    }
+  }
+  return false;
+}
+function reachableWithGatesOpen(sx, sy, tx, ty) {
+  const seen = makeGrid(false);
+  seen[sy][sx] = true;
+  const q = [[sx, sy]];
+  let h = 0;
+  while (h < q.length) {
+    const [x, y] = q[h++];
+    if (x === tx && y === ty) return true;
+    for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+      const nx = x + dx, ny = y + dy;
+      if (!inBounds(nx, ny) || seen[ny][nx]) continue;
+      const t = map[ny][nx];
+      if (t === T_FLOOR || t === T_GATE || t === T_EXIT) {
+        seen[ny][nx] = true;
+        q.push([nx, ny]);
+      }
+    }
+  }
+  return false;
+}
+
+// ============== level routing ==============
+let forceNextKind = null;     // admin one-shot override for the next genLevel call
+let forceNextModifier = null; // 'NONE' = clear, string = set, null = no override
+
+// computes the level's "raw" kind purely from n (no adjacency check, no force override)
+function rawLevelKindFor(n) {
+  if (n === 1) return 'tutorial';
+  if (n % 50 === 0) return 'ultra';
+  if (n % 10 === 0) return 'boss';
+  if (n % 5 === 0) return 'miniboss';
+  if (n < 4) return 'normal';
+  if (levelSeed(n, 1) < 0.18) return 'rareshop';
+  if (levelSeed(n, 4) < 0.08) return 'bonus';
+  return 'normal';
+}
+
+function levelKindFor(n) {
+  if (forceNextKind && n === level) return forceNextKind;
+  const raw = rawLevelKindFor(n);
+  // never let two rareshops or two treasure rooms touch
+  if ((raw === 'rareshop' || raw === 'bonus') && rawLevelKindFor(n - 1) === raw) {
+    return 'normal';
+  }
+  return raw;
+}
+function findNextOfKind(kind, from) {
+  for (let i = (from || level) + 1; i < (from || level) + 500; i++) {
+    if (levelKindFor(i) === kind) return i;
+  }
+  return null;
+}
+function findNextModifier(from) {
+  for (let i = (from || level) + 1; i < (from || level) + 500; i++) {
+    if (levelKindFor(i) === 'normal' && levelModifierFor(i)) return i;
+  }
+  return null;
+}
+function levelModifierFor(n) {
+  if (forceNextModifier !== null && n === level) {
+    return forceNextModifier === 'NONE' ? null : forceNextModifier;
+  }
+  if (levelKindFor(n) !== 'normal') return null;
+  if (n < 18) return null;
+  const r = levelSeed(n, 2);
+  const chance = Math.min(0.20, 0.10 + (n - 18) * 0.004); // 10% at 18 → 20% by ~43
+  if (r < chance) {
+    const idx = Math.floor(levelSeed(n, 3) * MODIFIERS.length);
+    return MODIFIERS[idx].id;
+  }
+  return null;
+}
+function maxHpFor() { return 3 + (save.upgrades.hp || 0); }
+
+function newPlayer(x, y, role) {
+  const max = maxHpFor();
+  let saved = max;
+  if (role === 'painter') saved = save.painterHp;
+  else if (role === 'mixer')   saved = save.mixerHp;
+  if (typeof saved !== 'number' || saved <= 0) saved = max;
+  const hp = Math.max(1, Math.min(max, saved));
+  return {
+    x, y, moveT: 0, dir: 'd',
+    hp, maxHp: max,
+    invulnT: 0, hurtFlash: 0,
+    carry: P_NONE, lastAxis: 'h',
+    role,
+  };
+}
+
+function genLevel(n) {
+  earnedThisLevel = 0;
+  boss = null;
+  enemies = [];
+  coins = [];
+  chests = [];
+  floatTexts = [];
+  hazards = [];
+  particles = [];
+  levelDone = false;
+  levelDoneTimer = 0;
+  unlockBanner = 0;
+  pendingFullReset = 0;
+  levelStartT = timeNow;
+  levelElapsed = 0;
+  icyMomentum = { painter: null, mixer: null };
+  rareShopBlock = null;
+  rareShopOpen = false;
+  rareShopHover = -1;
+  levelKind = levelKindFor(n);
+  currentModifier = levelModifierFor(n);
+  save.level = n;
+
+  // active power-ups expire only at FULL boss / ultra (every 10 / 50), not mini-boss
+  if ((levelKind === 'boss' || levelKind === 'ultra') && save.activeUps.length) {
+    save.activeUps = [];
+  }
+
+  if (levelKind === 'tutorial')     genTutorial();
+  else if (levelKind === 'ultra')   genUltra(n);
+  else if (levelKind === 'boss')    genBoss(n);
+  else if (levelKind === 'miniboss')genMiniBoss(n);
+  else if (levelKind === 'rareshop')genRareShop();
+  else if (levelKind === 'bonus')   genBonusLevel(n);
+  else {
+    let ok = false;
+    for (let i = 0; i < 22 && !ok; i++) ok = tryGenNormal(n, false);
+    // if strict generation failed, retry with relaxed chokepoint requirement
+    for (let i = 0; i < 12 && !ok; i++) ok = tryGenNormal(n, true);
+    if (!ok) fallback();
+  }
+
+  // start-of-level coin bonus (Lucky Start upgrade)
+  const startCoin = (save.upgrades.startCoin || 0) * 5;
+  if (startCoin > 0) { save.money += startCoin; save.stats.totalEarned += startCoin; }
+
+  // when entering a rare shop, force the upgrades tab open
+  if (levelKind === 'rareshop') currentTab = 'upgrades';
+  // surface modifier message
+  if (currentModifier) {
+    const m = modifierById(currentModifier);
+    if (m) showMessage(`MODIFIER · ${m.name} — ${m.desc}`, 5);
+  }
+
+  // post-gen: coins+chests first so minions/hazards can avoid them
+  spawnCoinsForLevel(n);
+  spawnMinionsForLevel(n);
+  spawnHazardsForLevel(n);
+
+  // recovery upgrade: +heal HP at start of level (now meaningful, no auto-full-heal)
+  const heal = save.upgrades.heal || 0;
+  if (heal > 0 && painter && mixer) {
+    painter.hp = Math.min(painter.maxHp, painter.hp + heal);
+    mixer.hp   = Math.min(mixer.maxHp,   mixer.hp + heal);
+  }
+  // sync hp into save
+  if (painter) save.painterHp = painter.hp;
+  if (mixer)   save.mixerHp   = mixer.hp;
+
+  if (n > save.highest) save.highest = n;
+  saveGame();
+  renderShop();
+  updateAdminUI();
+}
+
+// ============== tutorial ==============
+function genTutorial() {
+  map   = makeGrid(T_WALL);
+  paint = makeGrid(P_NONE);
+  gates = [];
+  exitTiles = [];
+
+  for (let y = 4; y < GH - 4; y++)
+    for (let x = 3; x < GW - 3; x++)
+      map[y][x] = T_FLOOR;
+
+  const dx = Math.floor(GW / 2);
+  for (let y = 4; y < GH - 4; y++) map[y][dx] = T_WALL;
+  const gy = Math.floor(GH / 2);
+  map[gy][dx] = T_GATE;
+  gates.push({ x: dx, y: gy, required: P_O, open: false });
+
+  map[gy - 2][dx - 4] = T_WALL;
+  map[gy + 2][dx - 5] = T_WALL;
+
+  painter = newPlayer(5, gy, 'painter');
+  mixer   = newPlayer(6, gy + 1, 'mixer');
+
+  exitTiles = [{x: GW - 5, y: gy}, {x: GW - 5, y: gy + 1}];
+  for (const e of exitTiles) map[e.y][e.x] = T_EXIT;
+
+  showMessage('TUTORIAL · paint R + E next to the orange gate to open it · then both stand on the white portal', 7);
+}
+
+// ============== normal procedural ==============
+function gateCountFor(n) {
+  if (n <= 7)  return 1 + Math.floor(Math.random() * 2);   // 1-2
+  if (n <= 14) return 2 + Math.floor(Math.random() * 2);   // 2-3
+  if (n <= 24) return 2 + Math.floor(Math.random() * 3);   // 2-4
+  if (n <= 39) return 3 + Math.floor(Math.random() * 3);   // 3-5
+  if (n <= 59) return 4 + Math.floor(Math.random() * 2);   // 4-5
+  return 4 + Math.floor(Math.random() * 3);                // 4-6
+}
+
+function find2x2Floors() {
+  const spots = [];
+  for (let y = 0; y < GH - 1; y++)
+    for (let x = 0; x < GW - 1; x++) {
+      if (map[y][x] === T_FLOOR && map[y][x+1] === T_FLOOR &&
+          map[y+1][x] === T_FLOOR && map[y+1][x+1] === T_FLOOR) {
+        spots.push([x, y]);
+      }
+    }
+  return spots;
+}
+
+function tryGenNormal(n, lenient = false) {
+  map = makeGrid(T_WALL);
+  paint = makeGrid(P_NONE);
+  gates = [];
+  exitTiles = [];
+
+  const densityScale = Math.max(0.38, 0.56 - n * 0.003);
+  const target = Math.floor(GW * GH * (densityScale + Math.random() * 0.10));
+  let floors = 0;
+  let cx = Math.floor(GW / 2);
+  let cy = Math.floor(GH / 2);
+  let safety = 0;
+  while (floors < target && safety++ < 60000) {
+    if (map[cy][cx] === T_WALL) { map[cy][cx] = T_FLOOR; floors++; }
+    const d = Math.floor(Math.random() * 4);
+    if      (d === 0 && cx > 1) cx--;
+    else if (d === 1 && cx < GW - 2) cx++;
+    else if (d === 2 && cy > 1) cy--;
+    else if (d === 3 && cy < GH - 2) cy++;
+  }
+
+  // require a 2x2 floor cluster for spawn
+  const clusters = find2x2Floors();
+  if (clusters.length < 2) return false;
+  shuffle(clusters);
+  const [sx, sy] = clusters[0];
+
+  const dist = bfsFloorDist(sx, sy);
+
+  // exit: another 2x2 cluster, far from spawn, reachable
+  let exit2x2 = null, bestD = 0;
+  for (const [x, y] of clusters) {
+    if (Math.abs(x - sx) < 5 && Math.abs(y - sy) < 5) continue;
+    const d = Math.max(dist[y][x], dist[y+1][x], dist[y][x+1], dist[y+1][x+1]);
+    if (d > bestD) { bestD = d; exit2x2 = [x, y]; }
+  }
+  if (!exit2x2 || bestD < 12) return false;
+  const [ex, ey] = exit2x2;
+  exitTiles = [{x: ex, y: ey}, {x: ex + 1, y: ey}];
+  for (const e of exitTiles) map[e.y][e.x] = T_EXIT;
+
+  // place spawn pair (top-left painter, top-right mixer)
+  painter = newPlayer(sx, sy, 'painter');
+  mixer   = newPlayer(sx + 1, sy, 'mixer');
+
+  // protected tiles: spawn 2x2 + exit 2x2 area (top row + bottom row)
+  const protectedSet = new Set();
+  for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) {
+    protectedSet.add(`${sx + dx},${sy + dy}`);
+    protectedSet.add(`${ex + dx},${ey + dy}`);
+  }
+
+  // place gates at chokepoints (excluding protected tiles)
+  const numGates = gateCountFor(n);
+  const types = [];
+  const colors = [P_O, P_G, P_P];
+  const distinct = shuffle(colors.slice());
+  for (let i = 0; i < numGates; i++) {
+    types.push(i < 3 ? distinct[i] : pick(colors));
+  }
+  shuffle(types);
+
+  const placed = [];
+  let tries = 0;
+  while (placed.length < numGates && tries++ < 400) {
+    const choke = findChokepoint(sx, sy, ex, ey, protectedSet);
+    if (!choke) break;
+    const [gx, gy] = choke;
+    map[gy][gx] = T_GATE;
+    const g = { x: gx, y: gy, required: types[placed.length], open: false };
+    gates.push(g);
+    placed.push(g);
+  }
+  if (placed.length === 0) return false;
+
+  for (const g of gates) {
+    const ok = [[1,0],[-1,0],[0,1],[0,-1]].some(([ddx,ddy]) => {
+      const nx = g.x + ddx, ny = g.y + ddy;
+      return inBounds(nx, ny) && map[ny][nx] === T_FLOOR;
+    });
+    if (!ok) return false;
+  }
+
+  if (!reachableWithGatesOpen(sx, sy, ex, ey)) return false;
+  // strict mode: gates must collectively block start→exit; lenient mode just needs them placed
+  if (!lenient && reachableWithGatesClosed(sx, sy, ex, ey)) return false;
+
+  showMessage(`level ${n} · ${gates.length} gate${gates.length>1?'s':''}`, 2.5);
+  return true;
+}
+
+function findChokepoint(sx, sy, ex, ey, protectedSet) {
+  const cands = [];
+  for (let y = 0; y < GH; y++)
+    for (let x = 0; x < GW; x++) {
+      if (map[y][x] !== T_FLOOR) continue;
+      if (protectedSet && protectedSet.has(`${x},${y}`)) continue;
+      cands.push([x, y]);
+    }
+  shuffle(cands);
+  for (const [x, y] of cands) {
+    map[y][x] = T_WALL;
+    const ok = !reachableWithGatesClosed(sx, sy, ex, ey);
+    map[y][x] = T_FLOOR;
+    if (ok) return [x, y];
+  }
+  return null;
+}
+
+// ============== arenas ==============
+function genArena(walls) {
+  map = makeGrid(T_FLOOR);
+  paint = makeGrid(P_NONE);
+  gates = [];
+  exitTiles = [];
+  for (let x = 0; x < GW; x++) { map[0][x] = T_WALL; map[GH-1][x] = T_WALL; }
+  for (let y = 0; y < GH; y++) { map[y][0] = T_WALL; map[y][GW-1] = T_WALL; }
+  let placed = 0, tries = 0;
+  while (placed < walls && tries++ < 800) {
+    const x = 2 + Math.floor(Math.random() * (GW - 4));
+    const y = 2 + Math.floor(Math.random() * (GH - 4));
+    if (Math.hypot(x - GW/2, y - GH/2) < 4) continue;
+    if (Math.hypot(x - 4, y - 4) < 3) continue;
+    if (map[y][x] === T_FLOOR) { map[y][x] = T_WALL; placed++; }
+  }
+  painter = newPlayer(3, 3, 'painter');
+  mixer   = newPlayer(4, 3, 'mixer');
+}
+
+function genMiniBoss(n) {
+  genArena(12 + Math.floor(n * 0.3));
+  const color = pick([P_R, P_Y, P_B]);
+  const hp = 3 + Math.floor((n - 5) / 15);
+  boss = makeBoss(color, hp, hp, [color], 'mini');
+  showMessage(`MINI-BOSS · paint ${PAINT_NAME[complement(color)]} where it walks (it bites!)`, 4);
+}
+function genBoss(n) {
+  genArena(16 + Math.floor(n * 0.4));
+  const phases = shuffle([P_R, P_Y, P_B]);
+  const hp = 3 + Math.floor((n - 10) / 15);
+  boss = makeBoss(phases[0], hp, hp, phases, 'boss');
+  showMessage(`BOSS · 3 phases · defeat each color in turn`, 5);
+}
+function genUltra(n) {
+  genArena(22 + Math.floor(n * 0.3));
+  const hp = 8 + Math.floor((n - 50) / 20) * 2;
+  boss = makeBoss(P_K, hp, hp, [P_K], 'ultra');
+  showMessage(`ULTRA BOSS · only WHITE damages it · summon white repeatedly`, 6);
+}
+function makeBoss(color, hp, maxHp, phases, kind) {
+  let bx = Math.floor(GW / 2), by = Math.floor(GH / 2);
+  if (map[by][bx] !== T_FLOOR) {
+    outer: for (let r = 1; r < 8; r++)
+      for (let dy = -r; dy <= r; dy++)
+        for (let dx = -r; dx <= r; dx++)
+          if (inBounds(bx+dx, by+dy) && map[by+dy][bx+dx] === T_FLOOR) {
+            bx += dx; by += dy; break outer;
+          }
+  }
+  return {
+    x: bx, y: by, color, hp, maxHp,
+    phases, currentPhase: 0,
+    moveT: 1.2, alive: true,
+    invulnT: 0, animT: 0,
+    kind, isMini: kind === 'mini', ultra: kind === 'ultra',
+    attackCD: 0,
+  };
+}
+
+function genRareShop() {
+  // small intimate room with two players + an exit; rare items unlocked
+  map = makeGrid(T_WALL);
+  paint = makeGrid(P_NONE);
+  gates = [];
+  exitTiles = [];
+  // central room ~16x10
+  const x0 = 8, x1 = GW - 8, y0 = 5, y1 = GH - 5;
+  for (let y = y0; y < y1; y++)
+    for (let x = x0; x < x1; x++)
+      map[y][x] = T_FLOOR;
+  // a couple of decorative pillars
+  map[y0 + 1][x0 + 3] = T_WALL;
+  map[y1 - 2][x1 - 4] = T_WALL;
+  map[y0 + 1][x1 - 4] = T_WALL;
+  map[y1 - 2][x0 + 3] = T_WALL;
+  // spawn left
+  painter = newPlayer(x0 + 1, y0 + 2, 'painter');
+  mixer   = newPlayer(x0 + 1, y0 + 3, 'mixer');
+  // exit right (2 adjacent)
+  const ex = x1 - 2, ey = Math.floor((y0 + y1) / 2);
+  exitTiles = [{ x: ex, y: ey }, { x: ex, y: ey + 1 }];
+  for (const e of exitTiles) map[e.y][e.x] = T_EXIT;
+  // a few coins for ambiance
+  for (let i = 0; i < 3; i++) {
+    const cx = x0 + 5 + Math.floor(Math.random() * 6);
+    const cy = y0 + 2 + Math.floor(Math.random() * 5);
+    if (map[cy][cx] === T_FLOOR) {
+      coins.push({ x: cx, y: cy, value: 12, animT: Math.random() * 6.28 });
+    }
+  }
+  // place the shop block in the middle
+  const bx = Math.floor((x0 + x1) / 2);
+  const by = Math.floor((y0 + y1) / 2);
+  rareShopBlock = { x: bx, y: by };
+  showMessage('RARE SHOP · walk to the brown block, then click it or press X', 6);
+}
+
+function chestValue(n, big) {
+  const min = (big ? 220 : 80)  + n * (big ? 14 : 6);
+  const max = (big ? 520 : 220) + n * (big ? 28 : 12);
+  return Math.floor(min + Math.random() * (max - min));
+}
+
+function placeChest(x, y, value) {
+  chests.push({ x, y, value, animT: Math.random() * 6.28 });
+  // ambient coins fanned out around the chest, denser closer in
+  for (let dy = -2; dy <= 2; dy++)
+    for (let dx = -2; dx <= 2; dx++) {
+      if (dx === 0 && dy === 0) continue;
+      const nx = x + dx, ny = y + dy;
+      if (!inBounds(nx, ny) || map[ny][nx] !== T_FLOOR) continue;
+      if (chests.some(c => c.x === nx && c.y === ny)) continue;
+      if (coins.some(c => c.x === nx && c.y === ny)) continue;
+      const dist = Math.abs(dx) + Math.abs(dy);
+      const chance = dist === 1 ? 0.85 : (dist === 2 ? 0.45 : 0.15);
+      if (Math.random() < chance) {
+        coins.push({
+          x: nx, y: ny,
+          value: 6 + Math.floor(Math.random() * 8) + Math.floor(level * 0.4),
+          animT: Math.random() * 6.28,
+        });
+      }
+    }
+}
+
+function genBonusLevel(n) {
+  // small open room with a couple of treasure chests
+  map = makeGrid(T_WALL);
+  paint = makeGrid(P_NONE);
+  gates = [];
+  exitTiles = [];
+  const x0 = 6, x1 = GW - 6, y0 = 4, y1 = GH - 4;
+  for (let y = y0; y < y1; y++)
+    for (let x = x0; x < x1; x++)
+      map[y][x] = T_FLOOR;
+
+  painter = newPlayer(x0 + 1, y0 + 2, 'painter');
+  mixer   = newPlayer(x0 + 1, y0 + 3, 'mixer');
+
+  const ex = x1 - 2, ey = Math.floor((y0 + y1) / 2);
+  exitTiles = [{ x: ex, y: ey }, { x: ex, y: ey + 1 }];
+  for (const e of exitTiles) map[e.y][e.x] = T_EXIT;
+
+  // 2-3 big chests, randomly placed but well-spaced — at least 1 is guaranteed
+  const numChests = 2 + Math.floor(Math.random() * 2);
+  const candidates = [];
+  for (let y = y0 + 1; y < y1 - 1; y++) {
+    for (let x = x0 + 3; x < x1 - 3; x++) {
+      if (map[y][x] !== T_FLOOR) continue;
+      // keep clear of player spawn
+      if (Math.abs(x - painter.x) + Math.abs(y - painter.y) < 3) continue;
+      // and exit tiles
+      if (exitTiles.some(e => Math.abs(e.x - x) + Math.abs(e.y - y) < 2)) continue;
+      candidates.push([x, y]);
+    }
+  }
+  shuffle(candidates);
+  for (const [x, y] of candidates) {
+    if (chests.length >= numChests) break;
+    if (chests.some(c => Math.abs(c.x - x) + Math.abs(c.y - y) < 4)) continue;
+    placeChest(x, y, chestValue(n, true));
+  }
+  // hard guarantee: at least 1 chest exists
+  if (chests.length === 0 && candidates.length > 0) {
+    const [x, y] = candidates[0];
+    placeChest(x, y, chestValue(n, true));
+  }
+
+  showMessage('TREASURE ROOM · open the chests for a big payday!', 5);
+}
+
+function spawnHazardsForLevel(n) {
+  hazards = [];
+  if (levelKind !== 'normal') return;
+  if (n < 13) return;
+  const count = Math.min(8, 1 + Math.floor((n - 13) / 7));
+  const cands = [];
+  for (let y = 0; y < GH; y++)
+    for (let x = 0; x < GW; x++) {
+      if (map[y][x] !== T_FLOOR) continue;
+      if (Math.abs(x - painter.x) + Math.abs(y - painter.y) < 5) continue;
+      if (Math.abs(x - mixer.x) + Math.abs(y - mixer.y) < 5) continue;
+      if (exitTiles.some(e => e.x === x && e.y === y)) continue;
+      if (gates.some(g => g.x === x && g.y === y)) continue;
+      if (enemies.some(e => e.x === x && e.y === y)) continue;
+      // 2-tile buffer around chests so treasure rooms stay safe
+      if (chests.some(c => Math.abs(c.x - x) + Math.abs(c.y - y) <= 2)) continue;
+      cands.push([x, y]);
+    }
+  shuffle(cands);
+  for (let i = 0; i < count && i < cands.length; i++) {
+    hazards.push({ x: cands[i][0], y: cands[i][1], animT: Math.random() * 6.28 });
+  }
+}
+
+function fallback() {
+  // last-resort generator: simple drunkard's-walk cave, no gates
+  map = makeGrid(T_WALL);
+  paint = makeGrid(P_NONE);
+  gates = [];
+  exitTiles = [];
+  const target = Math.floor(GW * GH * 0.5);
+  let floors = 0;
+  let cx = Math.floor(GW / 2);
+  let cy = Math.floor(GH / 2);
+  let safety = 0;
+  while (floors < target && safety++ < 30000) {
+    if (map[cy][cx] === T_WALL) { map[cy][cx] = T_FLOOR; floors++; }
+    const d = Math.floor(Math.random() * 4);
+    if      (d === 0 && cx > 1) cx--;
+    else if (d === 1 && cx < GW - 2) cx++;
+    else if (d === 2 && cy > 1) cy--;
+    else if (d === 3 && cy < GH - 2) cy++;
+  }
+  // pick a 2×2 spawn cluster, else any floor pair
+  const clusters = find2x2Floors();
+  let sx = 5, sy = 10, mxs = 6, mys = 10;
+  if (clusters.length) {
+    [sx, sy] = clusters[0];
+    mxs = sx + 1; mys = sy;
+  }
+  painter = newPlayer(sx, sy, 'painter');
+  mixer   = newPlayer(mxs, mys, 'mixer');
+  // pick a far floor for exit
+  const dist = bfsFloorDist(sx, sy);
+  let bx = sx, by = sy, bd = 0;
+  for (let y = 0; y < GH; y++)
+    for (let x = 0; x < GW; x++)
+      if (map[y][x] === T_FLOOR && dist[y][x] > bd) { bd = dist[y][x]; bx = x; by = y; }
+  // adjacent floor for second exit tile
+  const adj = [[1,0],[-1,0],[0,1],[0,-1]]
+    .map(([dx,dy]) => [bx+dx, by+dy])
+    .filter(([x,y]) => inBounds(x,y) && map[y][x] === T_FLOOR);
+  exitTiles = [{ x: bx, y: by }];
+  if (adj.length) exitTiles.push({ x: adj[0][0], y: adj[0][1] });
+  else exitTiles.push({ x: bx, y: by });
+  for (const e of exitTiles) map[e.y][e.x] = T_EXIT;
+}
+
+// ============== particles ==============
+function spawnPaintBurst(x, y, color, count = 8) {
+  const cx = (x + 0.5) * TILE, cy = (y + 0.5) * TILE;
+  for (let i = 0; i < count; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const s = 30 + Math.random() * 70;
+    particles.push({ x: cx, y: cy, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 30, life: 0.5 + Math.random() * 0.2, maxLife: 0.7, color, size: 2 + Math.random() * 2 });
+  }
+}
+function spawnMixBurst(x, y, color, count = 22) {
+  const cx = (x + 0.5) * TILE, cy = (y + 0.5) * TILE;
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2 + Math.random() * 0.4;
+    const s = 80 + Math.random() * 80;
+    particles.push({ x: cx, y: cy, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 40, life: 0.8 + Math.random() * 0.4, maxLife: 1.2, color, size: 3 + Math.random() * 2 });
+  }
+}
+function spawnGateOpen(g) {
+  const cx = (g.x + 0.5) * TILE, cy = (g.y + 0.5) * TILE;
+  for (let i = 0; i < 36; i++) {
+    const a = (i / 36) * Math.PI * 2;
+    const s = 100 + Math.random() * 100;
+    particles.push({ x: cx, y: cy, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1.2, maxLife: 1.2, color: PAINT_COLOR[g.required], size: 3 + Math.random() * 3 });
+  }
+}
+function spawnConfetti(cx, cy, count = 100) {
+  const cs = ['#fff', PAINT_COLOR[P_R], PAINT_COLOR[P_Y], PAINT_COLOR[P_B], PAINT_COLOR[P_O], PAINT_COLOR[P_G], PAINT_COLOR[P_P]];
+  for (let i = 0; i < count; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const s = 60 + Math.random() * 220;
+    particles.push({ x: cx, y: cy, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 60, life: 1.6 + Math.random() * 0.6, maxLife: 2.2, color: cs[Math.floor(Math.random() * cs.length)], size: 3 + Math.random() * 3 });
+  }
+}
+function spawnHurtBurst(p) {
+  const cx = (p.x + 0.5) * TILE, cy = (p.y + 0.5) * TILE;
+  for (let i = 0; i < 14; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const s = 60 + Math.random() * 80;
+    particles.push({ x: cx, y: cy, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.6, maxLife: 0.6, color: '#ff3030', size: 2 + Math.random() * 2 });
+  }
+}
+function spawnCoinBurst(cx, cy, count = 18) {
+  for (let i = 0; i < count; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const s = 60 + Math.random() * 140;
+    particles.push({ x: cx, y: cy, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 80, life: 1.4, maxLife: 1.4, color: '#ffd668', size: 3 + Math.random() * 2 });
+  }
+}
+
+// ============== messages / actions ==============
+function showMessage(text, dur = 2.4) { message = text; messageTimer = dur; }
+
+function checkGates() {
+  for (const g of gates) {
+    if (g.open) continue;
+    let opened = false;
+    for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+      const nx = g.x + dx, ny = g.y + dy;
+      if (inBounds(nx, ny) && (paint[ny][nx] === g.required || paint[ny][nx] === P_W)) {
+        opened = true; break;
+      }
+    }
+    if (opened) {
+      g.open = true;
+      spawnGateOpen(g);
+      showMessage(`${PAINT_NAME[g.required]} gate opened!`);
+    }
+  }
+}
+
+function paintAt(x, y, color) {
+  if (!inBounds(x, y)) return;
+  const t = map[y][x];
+  if (t === T_WALL || t === T_GATE) return;
+  paint[y][x] = color;
+}
+
+function painterDrop(color) {
+  const t = map[painter.y][painter.x];
+  if (t !== T_FLOOR && t !== T_EXIT) return;
+  if (abilityActive('paint3x3')) {
+    for (let dy = -1; dy <= 1; dy++)
+      for (let dx = -1; dx <= 1; dx++)
+        paintAt(painter.x + dx, painter.y + dy, color);
+    spawnPaintBurst(painter.x, painter.y, PAINT_COLOR[color], 18);
+  } else {
+    paintAt(painter.x, painter.y, color);
+    spawnPaintBurst(painter.x, painter.y, PAINT_COLOR[color], 10);
+  }
+  if (isPrimary(color)) save.stats.primariesPlaced++;
+  checkGates();
+}
+
+function onMixerEnter() {
+  const x = mixer.x, y = mixer.y;
+  const tile = paint[y][x];
+
+  const catalyst = save.permaUps.includes('permaPalette');
+  if (mixer.carry === P_NONE) {
+    const canPickWhite     = abilityActive('whitePickup');           // gated by power-up only
+    const canPickSecondary = save.tripleUnlocked;                    // free after triple unlock
+    const canPickBlack     = abilityActive('wallBreak');
+    if (isPrimary(tile)
+        || (canPickSecondary && isSecondary(tile))
+        || (canPickWhite && tile === P_W)
+        || (canPickBlack && tile === P_K)) {
+      mixer.carry = tile;
+      paint[y][x] = P_NONE;
+      spawnPaintBurst(x, y, PAINT_COLOR[tile], 8);
+    }
+  } else {
+    if (isPrimary(mixer.carry) && isPrimary(tile)) {
+      const r = mix(mixer.carry, tile);
+      if (r !== null && r !== mixer.carry) {
+        paint[y][x] = r;
+        spawnMixBurst(x, y, PAINT_COLOR[r]);
+        save.stats.secondariesMixed++;
+        if (!catalyst) mixer.carry = P_NONE;
+      }
+    } else if (save.tripleUnlocked) {
+      const r = tripleMix(mixer.carry, tile);
+      if (r !== null) {
+        paint[y][x] = r;
+        spawnMixBurst(x, y, PAINT_COLOR[r], 36);
+        save.stats.whitesMade++;
+        if (!catalyst) mixer.carry = P_NONE;
+      }
+    }
+  }
+  checkGates();
+}
+
+function mixerDrop() {
+  if (mixer.carry === P_NONE) return;
+  const x = mixer.x, y = mixer.y;
+  const t = map[y][x];
+  if (t !== T_FLOOR && t !== T_EXIT) return;
+  paint[y][x] = mixer.carry;
+  spawnPaintBurst(x, y, PAINT_COLOR[mixer.carry], 8);
+  mixer.carry = P_NONE;
+  checkGates();
+}
+
+function mixerSubtract() {
+  if (!abilityActive('subtract')) return;
+  if (mixer.carry === P_NONE) return;
+  const x = mixer.x, y = mixer.y;
+  const t = paint[y][x];
+  if (t === P_NONE) return;
+  const c = mixer.carry;
+  if (t === c && isPrimary(t)) {
+    if (abilityActive('wallBreak')) {
+      paint[y][x] = P_K;
+      spawnMixBurst(x, y, '#222', 18);
+      breakAdjWalls(x, y);
+    } else {
+      // eraser: just clear the paint
+      paint[y][x] = P_NONE;
+      spawnPaintBurst(x, y, '#666', 8);
+    }
+    mixer.carry = P_NONE;
+    save.stats.subtracted++;
+    return;
+  }
+  if (isSecondary(t)) {
+    const r = subtractFromSecondary(c, t);
+    if (r !== null) {
+      paint[y][x] = r;
+      spawnMixBurst(x, y, PAINT_COLOR[r]);
+      mixer.carry = P_NONE;
+      save.stats.subtracted++;
+    }
+  }
+}
+
+function breakAdjWalls(x, y) {
+  for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+    const nx = x + dx, ny = y + dy;
+    if (!inBounds(nx, ny)) continue;
+    if (map[ny][nx] === T_WALL) {
+      map[ny][nx] = T_FLOOR;
+      paint[ny][nx] = P_NONE;
+      spawnMixBurst(nx, ny, '#777', 14);
+    }
+  }
+}
+
+const BASE_COOLDOWN = 0.13;
+function bondActive() {
+  const range = 2 + (save.upgrades.bond || 0) + (abilityActive('extendBond') ? 2 : 0);
+  return Math.abs(painter.x - mixer.x) + Math.abs(painter.y - mixer.y) <= range;
+}
+function moveCooldown() {
+  let cd = BASE_COOLDOWN;
+  cd *= Math.pow(0.92, save.upgrades.speed || 0);
+  if (abilityActive('quickStep')) cd *= 0.78;
+  if (save.permaUps.includes('permaSpeed')) cd *= 0.84;
+  if (bondActive()) cd *= 0.78;
+  return Math.max(0.04, cd);
+}
+
+function tryMove(p, dx, dy, otherP) {
+  const nx = p.x + dx, ny = p.y + dy;
+  if (p === mixer && abilityActive('wallBreak') && p.carry === P_K) {
+    if (inBounds(nx, ny) && map[ny][nx] === T_WALL) {
+      map[ny][nx] = T_FLOOR;
+      paint[ny][nx] = P_NONE;
+      spawnMixBurst(nx, ny, '#777', 18);
+      p.carry = P_NONE;
+      p.moveT = moveCooldown();
+      return true;
+    }
+  }
+  if (!isPassable(nx, ny)) return false;
+  if (otherP.x === nx && otherP.y === ny) return false;
+  if (boss && boss.alive && boss.x === nx && boss.y === ny) return false;
+  if (enemies.some(e => e.alive && e.x === nx && e.y === ny)) return false;
+  if (rareShopBlock && rareShopBlock.x === nx && rareShopBlock.y === ny) return false;
+  if (p === painter && save.permaUps.includes('permaTrail') && painter.lastColor) {
+    paintAt(p.x, p.y, painter.lastColor);
+  }
+  p.x = nx; p.y = ny;
+  if      (dx >  0) p.dir = 'r';
+  else if (dx <  0) p.dir = 'l';
+  else if (dy >  0) p.dir = 'd';
+  else              p.dir = 'u';
+  p.moveT = moveCooldown();
+  return true;
+}
+
+function damagePlayer(p) {
+  if (invincible) return;
+  if (p.invulnT > 0) return;
+  p.hp -= 1;
+  p.invulnT = 1.3 + (save.upgrades.shieldUp || 0) * 0.4;
+  p.hurtFlash = 0.5;
+  spawnHurtBurst(p);
+  if (p === painter) save.painterHp = p.hp; else save.mixerHp = p.hp;
+  saveGame();
+  if (p.hp <= 0) {
+    pendingFullReset = 1.4;
+    save.stats.deaths++;
+    showMessage('a player fell…', 1.4);
+  }
+}
+
+function fullResetRun() {
+  level = 1;
+  save.level = 1;
+  save.activeUps = [];
+  save.painterHp = maxHpFor();
+  save.mixerHp = maxHpFor();
+  saveGame();
+  genLevel(1);
+  showMessage('the run begins again', 3);
+}
+
+function continueFromCheckpoint() {
+  const cp = save.highestCheckpoint || 1;
+  level = cp > 1 ? cp : 1;
+  save.level = level;
+  save.activeUps = [];
+  save.painterHp = maxHpFor();
+  save.mixerHp = maxHpFor();
+  saveGame();
+  genLevel(level);
+  showMessage(`continuing from checkpoint · level ${level}`, 3);
+}
+
+// ============== boss AI ==============
+function bossStep(dt) {
+  if (!boss || !boss.alive) return;
+  boss.animT += dt;
+  if (boss.invulnT > 0) boss.invulnT -= dt;
+  if (boss.attackCD > 0) boss.attackCD -= dt;
+
+  if (boss.invulnT <= 0) {
+    const tilePaint = paint[boss.y][boss.x];
+    let want, takesHit = false;
+    if (boss.ultra) {
+      want = P_W;
+      takesHit = (tilePaint === P_W);
+    } else {
+      want = complement(boss.color);
+      takesHit = (tilePaint === want || tilePaint === P_W);
+    }
+    if (takesHit) {
+      let dmg = 1 + (save.upgrades.bossDmg || 0);
+      if (abilityActive('bossDoubleDmg')) dmg *= 2;
+      boss.hp -= dmg;
+      paint[boss.y][boss.x] = P_NONE;
+      spawnMixBurst(boss.x, boss.y, PAINT_COLOR[want] || '#fff', 30);
+      boss.invulnT = 0.4;
+
+      if (boss.hp <= 0) {
+        if (boss.phases && boss.currentPhase < boss.phases.length - 1) {
+          boss.currentPhase++;
+          boss.color = boss.phases[boss.currentPhase];
+          boss.hp = boss.maxHp;
+          showMessage(`phase ${boss.currentPhase + 1}/${boss.phases.length} · now ${PAINT_NAME[boss.color]} → mix ${PAINT_NAME[complement(boss.color)]}`, 3);
+          spawnConfetti((boss.x + 0.5) * TILE, (boss.y + 0.5) * TILE, 40);
+        } else {
+          boss.alive = false;
+          spawnConfetti((boss.x + 0.5) * TILE, (boss.y + 0.5) * TILE, 160);
+          if (boss.kind === 'mini')  save.stats.miniBossesDefeated++;
+          if (boss.kind === 'boss')  save.stats.bossesDefeated++;
+          if (boss.kind === 'ultra') save.stats.ultrasDefeated++;
+          if (boss.kind === 'boss' && level === 10 && !save.tripleUnlocked) {
+            save.tripleUnlocked = true;
+            saveGame();
+            // Open the dedicated triple-mix tutorial modal — pauses level transition
+            tripleMixModalOpen = true;
+          } else if (boss.kind === 'boss') {
+            const rolled = grantBossPowerUp();
+            if (rolled) {
+              unlockBanner = 5;
+              unlockBannerInfo = {
+                title: 'POWER-UP EARNED · until next boss',
+                name: rolled.name,
+                desc: rolled.desc,
+                accent: '#9af0a8',
+              };
+            }
+          } else if (boss.kind === 'ultra') {
+            const rolled = grantUltraPerma();
+            if (rolled) {
+              unlockBanner = 6;
+              unlockBannerInfo = {
+                title: 'PERMANENT REWARD · forever',
+                name: rolled.name,
+                desc: rolled.desc,
+                accent: '#d8c8ff',
+              };
+            } else {
+              unlockBanner = 4;
+              unlockBannerInfo = {
+                title: 'ULTRA DEFEATED',
+                name: 'No new rewards',
+                desc: 'You already own every permanent reward · keep climbing!',
+                accent: '#ffd668',
+              };
+            }
+          } else {
+            showMessage('mini-boss defeated!', 2);
+          }
+        }
+      }
+    }
+  }
+
+  boss.moveT -= dt;
+  if (boss.moveT <= 0) {
+    let speed = boss.isMini ? 0.62 : (boss.ultra ? 0.42 : 0.50);
+    const next = bossNextStep();
+    if (next) {
+      const onPlayer = (next.x === painter.x && next.y === painter.y) ||
+                       (next.x === mixer.x && next.y === mixer.y);
+      if (!onPlayer) { boss.x = next.x; boss.y = next.y; }
+    }
+    boss.moveT = speed;
+  }
+
+  if (boss.attackCD <= 0) {
+    const adj = (p) => Math.abs(p.x - boss.x) + Math.abs(p.y - boss.y) === 1;
+    if (adj(painter)) damagePlayer(painter);
+    if (adj(mixer))   damagePlayer(mixer);
+    boss.attackCD = boss.ultra ? 0.7 : 0.9;
+  }
+}
+
+// ============== minions / coins ==============
+function enemyCountFor(n) {
+  // first minions arrive earlier, but the gaps between bumps widen toward the
+  // top so reaching the cap of 5 takes a while.
+  if (n < 8)   return 0;   // first taste of combat
+  if (n < 16)  return 1;
+  if (n < 25)  return 2;
+  if (n < 38)  return 3;
+  if (n < 55)  return 4;
+  return 5;
+}
+
+function spawnMinionsForLevel(n) {
+  if (levelKind !== 'normal') return;
+  const count = enemyCountFor(n);
+  if (count === 0) return;
+  const sx = painter.x, sy = painter.y;
+  const dist = bfsFloorDist(sx, sy);
+  const cands = [];
+  for (let y = 0; y < GH; y++)
+    for (let x = 0; x < GW; x++) {
+      if (map[y][x] !== T_FLOOR) continue;
+      if (dist[y][x] < 6) continue;
+      if (exitTiles.some(e => e.x === x && e.y === y)) continue;
+      // keep a 2-tile buffer around treasure chests
+      if (chests.some(c => Math.abs(c.x - x) + Math.abs(c.y - y) <= 2)) continue;
+      cands.push([x, y]);
+    }
+  shuffle(cands);
+  for (let i = 0; i < count && i < cands.length; i++) {
+    const [x, y] = cands[i];
+    enemies.push({
+      x, y,
+      color: enemyColorFor(n),
+      moveT: 0.8 + Math.random() * 0.6,
+      attackCD: 1.0,
+      alive: true,
+      animT: Math.random() * 6.28,
+    });
+  }
+}
+
+// secondary-color enemies appear first (killed by simple primary paint),
+// primary-color ones (require mixer secondaries) ramp in over time.
+function enemyColorFor(n) {
+  let primaryChance;
+  if (n < 20)      primaryChance = 0;     // intro: pure secondary enemies
+  else if (n < 30) primaryChance = 0.25;
+  else if (n < 40) primaryChance = 0.40;
+  else             primaryChance = 0.50;  // eventual 50/50 mix
+  if (Math.random() < primaryChance) return pick([P_R, P_Y, P_B]);
+  return pick([P_O, P_G, P_P]);
+}
+
+function spawnCoinsForLevel(n) {
+  if (levelKind !== 'normal') return;
+  const count = 3 + Math.floor(Math.random() * 4); // 3-6
+  const sx = painter.x, sy = painter.y;
+  const cands = [];
+  for (let y = 0; y < GH; y++)
+    for (let x = 0; x < GW; x++) {
+      if (map[y][x] !== T_FLOOR) continue;
+      if (Math.abs(x - sx) + Math.abs(y - sy) < 4) continue;
+      if (exitTiles.some(e => e.x === x && e.y === y)) continue;
+      if (gates.some(g => g.x === x && g.y === y)) continue;
+      cands.push([x, y]);
+    }
+  shuffle(cands);
+  for (let i = 0; i < count && i < cands.length; i++) {
+    const [x, y] = cands[i];
+    coins.push({
+      x, y,
+      value: 6 + Math.floor(Math.random() * 8) + Math.floor(n * 0.6),
+      animT: Math.random() * 6.28,
+    });
+  }
+  // 12% chance: a single treasure chest somewhere on the map
+  if (cands.length > count + 3 && Math.random() < 0.12) {
+    const [tx, ty] = cands[count];
+    placeChest(tx, ty, chestValue(n, false));
+    showMessage('a TREASURE CHEST is hidden somewhere · find it!', 3);
+  }
+}
+
+function enemyNextStep(e) {
+  const seen = makeGrid(false);
+  const parent = makeGrid(null);
+  seen[e.y][e.x] = true;
+  const q = [[e.x, e.y]];
+  let h = 0;
+  let target = null;
+  while (h < q.length) {
+    const [x, y] = q[h++];
+    if ((x === painter.x && y === painter.y) || (x === mixer.x && y === mixer.y)) {
+      target = [x, y]; break;
+    }
+    for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+      const nx = x + dx, ny = y + dy;
+      if (!inBounds(nx, ny) || seen[ny][nx]) continue;
+      const t = map[ny][nx];
+      if (t === T_WALL) continue;
+      if (t === T_GATE) {
+        const g = gateAt(nx, ny);
+        if (!g || !g.open) continue;
+      }
+      seen[ny][nx] = true;
+      parent[ny][nx] = [x, y];
+      q.push([nx, ny]);
+    }
+  }
+  if (!target) return null;
+  let cur = target;
+  for (let i = 0; i < 200; i++) {
+    const p = parent[cur[1]][cur[0]];
+    if (!p) return null;
+    if (p[0] === e.x && p[1] === e.y) return { x: cur[0], y: cur[1] };
+    cur = p;
+  }
+  return null;
+}
+
+function enemyStep(dt) {
+  for (const e of enemies) {
+    if (!e.alive) continue;
+    e.animT += dt;
+    if (e.attackCD > 0) e.attackCD -= dt;
+
+    // death check
+    const want = complement(e.color);
+    const onPaint = paint[e.y][e.x];
+    if (onPaint === want || onPaint === P_W) {
+      e.alive = false;
+      paint[e.y][e.x] = P_NONE;
+      let drop = 6 + Math.floor(level * 0.4);
+      drop = Math.floor(drop * (1 + (save.upgrades.enemyMoney || 0) * 0.5));
+      save.money += drop;
+      save.stats.totalEarned += drop;
+      save.stats.enemiesKilled = (save.stats.enemiesKilled || 0) + 1;
+      spawnMixBurst(e.x, e.y, PAINT_COLOR[want] || '#fff', 18);
+      spawnCoinBurst((e.x + 0.5) * TILE, (e.y + 0.5) * TILE, 8);
+      spawnFloatText(e.x, e.y, `+$${drop}`, '#ffd668');
+      saveGame();
+      continue;
+    }
+
+    // move
+    e.moveT -= dt;
+    if (e.moveT <= 0) {
+      const next = enemyNextStep(e);
+      if (next) {
+        const onP = (next.x === painter.x && next.y === painter.y) ||
+                    (next.x === mixer.x && next.y === mixer.y);
+        const onB = boss && boss.alive && boss.x === next.x && boss.y === next.y;
+        const onO = enemies.some(o => o !== e && o.alive && o.x === next.x && o.y === next.y);
+        if (!onP && !onB && !onO) { e.x = next.x; e.y = next.y; }
+      }
+      e.moveT = 0.7 + Math.random() * 0.3;
+    }
+
+    // attack on adjacency (with cooldown)
+    if (e.attackCD <= 0) {
+      const adj = (p) => Math.abs(p.x - e.x) + Math.abs(p.y - e.y) === 1;
+      let hit = false;
+      if (adj(painter)) { damagePlayer(painter); hit = true; }
+      if (adj(mixer))   { damagePlayer(mixer); hit = true; }
+      if (hit) e.attackCD = 1.5;
+    }
+  }
+}
+
+function checkCoinPickup(p) {
+  // Walking onto a coin is always an instant pickup
+  for (let i = coins.length - 1; i >= 0; i--) {
+    const c = coins[i];
+    if (c.x === p.x && c.y === p.y) {
+      save.money += c.value;
+      save.stats.totalEarned += c.value;
+      save.stats.coinsCollected = (save.stats.coinsCollected || 0) + 1;
+      spawnCoinBurst((c.x + 0.5) * TILE, (c.y + 0.5) * TILE, 12);
+      spawnFloatText(c.x, c.y, `+$${c.value}`, '#ffd668');
+      coins.splice(i, 1);
+      saveGame();
+    }
+  }
+}
+
+// Magnet animation: when a coin is within magnet range, it slides toward the
+// nearest player. When close enough to the player it gets absorbed.
+function tickCoinMagnet(dt) {
+  const range = save.upgrades.magnet || 0;
+  if (range <= 0) {
+    // ensure no stale fx/fy left over from earlier upgrade purchases
+    for (const c of coins) { if (c.fx !== undefined) { c.fx = undefined; c.fy = undefined; c.magnetizing = false; } }
+    return;
+  }
+  for (let i = coins.length - 1; i >= 0; i--) {
+    const c = coins[i];
+    const dp = Math.abs(c.x - painter.x) + Math.abs(c.y - painter.y);
+    const dm = Math.abs(c.x - mixer.x)   + Math.abs(c.y - mixer.y);
+    let target = null;
+    if (dp <= range && dp <= dm) target = painter;
+    else if (dm <= range)        target = mixer;
+    if (!target) {
+      if (c.magnetizing) { c.fx = undefined; c.fy = undefined; c.magnetizing = false; }
+      continue;
+    }
+    if (c.fx === undefined) {
+      c.fx = (c.x + 0.5) * TILE;
+      c.fy = (c.y + 0.5) * TILE;
+    }
+    c.magnetizing = true;
+    const tx = (target.x + 0.5) * TILE;
+    const ty = (target.y + 0.5) * TILE;
+    // accelerate slightly each frame for a satisfying suck-in
+    const k = 0.18 + Math.min(0.30, (c.magT || 0));
+    c.magT = (c.magT || 0) + dt * 0.6;
+    c.fx += (tx - c.fx) * k;
+    c.fy += (ty - c.fy) * k;
+    if (Math.abs(c.fx - tx) < 6 && Math.abs(c.fy - ty) < 6) {
+      save.money += c.value;
+      save.stats.totalEarned += c.value;
+      save.stats.coinsCollected = (save.stats.coinsCollected || 0) + 1;
+      spawnFloatText(target.x, target.y, `+$${c.value}`, '#ffd668');
+      spawnCoinBurst(tx, ty, 6);
+      coins.splice(i, 1);
+      saveGame();
+    }
+  }
+}
+
+function checkChestPickup(p) {
+  for (let i = chests.length - 1; i >= 0; i--) {
+    const c = chests[i];
+    if (c.x === p.x && c.y === p.y) {
+      save.money += c.value;
+      save.stats.totalEarned += c.value;
+      spawnFloatText(c.x, c.y, `+$${c.value.toLocaleString()}`, '#ffd668');
+      spawnCoinBurst((c.x + 0.5) * TILE, (c.y + 0.5) * TILE, 38);
+      spawnConfetti((c.x + 0.5) * TILE, (c.y + 0.5) * TILE, 18);
+      chests.splice(i, 1);
+      saveGame();
+    }
+  }
+}
+
+function spawnFloatText(tileX, tileY, text, color) {
+  floatTexts.push({
+    x: (tileX + 0.5) * TILE,
+    y: (tileY + 0.5) * TILE - 10,
+    text, color: color || '#fff',
+    life: 1.6, maxLife: 1.6, vy: -28,
+  });
+}
+
+function checkHazardHit(p) {
+  for (const h of hazards) {
+    if (h.x === p.x && h.y === p.y && p.invulnT <= 0) {
+      damagePlayer(p);
+      return;
+    }
+  }
+}
+
+function clearHazardsByWhite() {
+  for (let i = hazards.length - 1; i >= 0; i--) {
+    const h = hazards[i];
+    if (paint[h.y][h.x] === P_W) {
+      spawnMixBurst(h.x, h.y, '#fff', 16);
+      paint[h.y][h.x] = P_NONE;
+      hazards.splice(i, 1);
+    }
+  }
+}
+
+function bossNextStep() {
+  const seen = makeGrid(false);
+  const parent = makeGrid(null);
+  seen[boss.y][boss.x] = true;
+  const q = [[boss.x, boss.y]];
+  let h = 0;
+  let target = null;
+  while (h < q.length) {
+    const [x, y] = q[h++];
+    if ((x === painter.x && y === painter.y) || (x === mixer.x && y === mixer.y)) {
+      target = [x, y]; break;
+    }
+    for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+      const nx = x + dx, ny = y + dy;
+      if (!inBounds(nx, ny) || seen[ny][nx]) continue;
+      if (map[ny][nx] === T_WALL) continue;
+      seen[ny][nx] = true;
+      parent[ny][nx] = [x, y];
+      q.push([nx, ny]);
+    }
+  }
+  if (!target) return null;
+  let cur = target;
+  for (let i = 0; i < 200; i++) {
+    const p = parent[cur[1]][cur[0]];
+    if (!p) return null;
+    if (p[0] === boss.x && p[1] === boss.y) return { x: cur[0], y: cur[1] };
+    cur = p;
+  }
+  return null;
+}
+
+// ============== rewards ==============
+function moneyRewardFor() {
+  const moneyMult = 1 + (save.upgrades.money || 0) * 0.25;
+  let base;
+  if (boss && boss.ultra) base = 800 + level * 60;
+  else if (boss && boss.kind === 'boss') base = 200 + level * 25;
+  else if (boss && boss.kind === 'mini') base = 80  + level * 12;
+  else base = 15 + level * 4;
+  // timed bonus: under 30s on a normal level → +30%
+  let timeBonus = 1;
+  if (!boss && levelKind === 'normal' && levelElapsed > 0 && levelElapsed < 30) {
+    timeBonus = 1.3;
+  }
+  let reward = Math.floor(base * moneyMult * timeBonus);
+  // Lucky Streak: small chance per tier to double
+  const luckyTier = save.upgrades.doubler || 0;
+  if (luckyTier > 0) {
+    const chance = 1 - Math.pow(0.95, luckyTier); // 5% per tier compounded
+    if (Math.random() < chance) {
+      reward *= 2;
+      showMessage('LUCKY STREAK · double money!', 2);
+    }
+  }
+  return reward;
+}
+
+function grantBossPowerUp() {
+  const remaining = ACTIVE_POOL.filter(p => !save.activeUps.includes(p.id));
+  const choices = remaining.length > 0 ? remaining : ACTIVE_POOL;
+  const pUp = pick(choices);
+  if (!save.activeUps.includes(pUp.id)) save.activeUps.push(pUp.id);
+  saveGame();
+  renderShop();
+  return pUp;
+}
+function grantUltraPerma() {
+  const remaining = PERMA_POOL.filter(p => !save.permaUps.includes(p.id));
+  if (remaining.length === 0) return null;
+  const pUp = pick(remaining);
+  save.permaUps.push(pUp.id);
+  saveGame();
+  renderShop();
+  return pUp;
+}
+
+// ============== completion ==============
+function checkLevelComplete() {
+  if (levelDone) return;
+  if (boss) {
+    if (!boss.alive) {
+      let reward = moneyRewardFor();
+      // milestone bonus on boss/ultra levels (every 10)
+      if (level % 10 === 0) {
+        const ms = 200 + level * 30;
+        reward += ms;
+        showMessage(`★ MILESTONE LVL ${level} ★ +$${ms.toLocaleString()} bonus`, 4);
+        const cx = canvas.width / 2, cy = canvas.height / 2;
+        spawnConfetti(cx, cy, 80);
+      }
+      save.money += reward;
+      save.stats.totalEarned += reward;
+      earnedThisLevel = reward;
+      save.totalScore += 100 * level + (boss.ultra ? 600 : (boss.isMini ? 100 : 350));
+      // checkpoint: every cleared boss/mini/ultra
+      save.highestCheckpoint = Math.max(save.highestCheckpoint || 0, level);
+      levelDone = true; levelDoneTimer = 0;
+      save.painterHp = painter.hp;
+      save.mixerHp = mixer.hp;
+      saveGame(); renderShop();
+    }
+    return;
+  }
+  if (gates.length > 0 && !gates.every(g => g.open)) return;
+  const onExit = p => exitTiles.some(e => e.x === p.x && e.y === p.y);
+  if (onExit(painter) && onExit(mixer)) {
+    const reward = moneyRewardFor();
+    save.money += reward;
+    save.stats.totalEarned += reward;
+    earnedThisLevel = reward;
+    save.totalScore += 100 * level + (gates.length * 50);
+    // count toward upgrade-token: every 10 normal/bonus/shop completions = 1 token
+    save.stats.normalLevelsCompleted = (save.stats.normalLevelsCompleted || 0) + 1;
+    if (save.stats.normalLevelsCompleted % 10 === 0) {
+      save.upgradeTokens = (save.upgradeTokens || 0) + 1;
+      showMessage(`★ FREE UPGRADE TOKEN earned! Spend it in the Upgrades tab`, 4);
+    }
+    levelDone = true; levelDoneTimer = 0;
+    const cx = ((exitTiles[0].x + exitTiles[1].x) / 2 + 0.5) * TILE;
+    const cy = ((exitTiles[0].y + exitTiles[1].y) / 2 + 0.5) * TILE;
+    spawnConfetti(cx, cy);
+    spawnCoinBurst(cx, cy);
+    save.painterHp = painter.hp;
+    save.mixerHp = mixer.hp;
+    saveGame(); renderShop();
+  }
+}
+
+// ============== auto-mix ==============
+function tryAutoMix() {
+  if (!abilityActive('autoMix')) return;
+  const x = mixer.x, y = mixer.y;
+  if (mixer.carry === P_NONE) return;
+  if (!isPrimary(mixer.carry)) return;
+  for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+    const nx = x + dx, ny = y + dy;
+    if (!inBounds(nx, ny)) continue;
+    const tp = paint[ny][nx];
+    if (isPrimary(tp) && tp !== mixer.carry) {
+      const r = mix(mixer.carry, tp);
+      if (r !== null) {
+        paint[ny][nx] = r;
+        spawnMixBurst(nx, ny, PAINT_COLOR[r], 22);
+        mixer.carry = P_NONE;
+        checkGates();
+        return;
+      }
+    }
+  }
+}
+
+// ============== main loop ==============
+let lastT = 0;
+let holdPaintT = { Q: 0, E: 0, R: 0 };
+let autoMixTimer = 0;
+
+function pickMoveDir(p, codes) {
+  // codes: { up, down, left, right }
+  let v = keys[codes.up] ? -1 : (keys[codes.down] ? 1 : 0);
+  let h = keys[codes.left] ? -1 : (keys[codes.right] ? 1 : 0);
+  if (currentModifier === 'mirror') { v = -v; h = -h; }
+  let dx = 0, dy = 0;
+  if (v && h) {
+    if (p.lastAxis === 'v') { dx = h; p.lastAxis = 'h'; }
+    else { dy = v; p.lastAxis = 'v'; }
+  } else if (v) { dy = v; p.lastAxis = 'v'; }
+  else if (h)   { dx = h; p.lastAxis = 'h'; }
+  return { dx, dy };
+}
+
+function applyIcySlide(p, dx, dy, otherP) {
+  if (currentModifier !== 'icy') return;
+  const role = (p === painter) ? 'painter' : 'mixer';
+  icyMomentum[role] = { dx, dy, t: 0.10 };
+}
+
+function tick(t) {
+  const dt = Math.min((t - lastT) / 1000, 0.05);
+  lastT = t;
+  timeNow = t / 1000;
+
+  if (pendingFullReset > 0) {
+    pendingFullReset -= dt;
+    if (pendingFullReset <= 0) {
+      // show choice screen if a checkpoint exists
+      if ((save.highestCheckpoint || 0) > 1) deathScreen = true;
+      else fullResetRun();
+    }
+    drawAll(); requestAnimationFrame(tick); return;
+  }
+  if (deathScreen) {
+    if (consume('KeyR')) { deathScreen = false; fullResetRun(); }
+    else if (consume('KeyC')) { deathScreen = false; continueFromCheckpoint(); }
+    drawAll(); requestAnimationFrame(tick); return;
+  }
+
+  painter.moveT  = Math.max(0, painter.moveT - dt);
+  mixer.moveT    = Math.max(0, mixer.moveT - dt);
+  if (painter.invulnT > 0) painter.invulnT -= dt;
+  if (mixer.invulnT > 0)   mixer.invulnT   -= dt;
+  if (painter.hurtFlash > 0) painter.hurtFlash -= dt;
+  if (mixer.hurtFlash > 0)   mixer.hurtFlash   -= dt;
+
+  if (!levelDone && !rareShopOpen) {
+    if (painter.moveT === 0) {
+      // icy momentum first
+      if (currentModifier === 'icy' && icyMomentum.painter) {
+        const m = icyMomentum.painter;
+        if (tryMove(painter, m.dx, m.dy, mixer)) {
+          icyMomentum.painter = null;
+        } else icyMomentum.painter = null;
+      }
+      const { dx, dy } = pickMoveDir(painter, { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' });
+      if (dx || dy) {
+        if (tryMove(painter, dx, dy, mixer)) applyIcySlide(painter, dx, dy, mixer);
+      }
+    }
+
+    const paintTick = (code, key, color) => {
+      if (consume(code)) { painterDrop(color); painter.lastColor = color; holdPaintT[key] = 0.07; }
+      else if (abilityActive('holdPaint') && keys[code]) {
+        holdPaintT[key] -= dt;
+        if (holdPaintT[key] <= 0) { painterDrop(color); painter.lastColor = color; holdPaintT[key] = 0.07; }
+      }
+    };
+    paintTick('KeyR', 'R', P_R);
+    paintTick('KeyE', 'E', P_Y);
+    paintTick('KeyQ', 'Q', P_B);
+
+    if (mixer.moveT === 0) {
+      if (currentModifier === 'icy' && icyMomentum.mixer) {
+        const m = icyMomentum.mixer;
+        if (tryMove(mixer, m.dx, m.dy, painter)) { onMixerEnter(); icyMomentum.mixer = null; }
+        else icyMomentum.mixer = null;
+      }
+      const { dx, dy } = pickMoveDir(mixer, { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' });
+      if (dx || dy) {
+        if (tryMove(mixer, dx, dy, painter)) {
+          onMixerEnter();
+          applyIcySlide(mixer, dx, dy, painter);
+        }
+      }
+    }
+    if (consume('ShiftLeft') || consume('ShiftRight')) mixerDrop();
+    if (consume('Slash')) mixerSubtract();
+
+    autoMixTimer -= dt;
+    if (autoMixTimer <= 0) { tryAutoMix(); autoMixTimer = 0.5; }
+
+    enemyStep(dt);
+    bossStep(dt);
+    clearHazardsByWhite();
+    checkHazardHit(painter);
+    checkHazardHit(mixer);
+    checkCoinPickup(painter);
+    checkCoinPickup(mixer);
+    tickCoinMagnet(dt);
+    checkChestPickup(painter);
+    checkChestPickup(mixer);
+    // float-text tick
+    for (const f of floatTexts) { f.life -= dt; f.y += f.vy * dt; f.vy += 8 * dt; }
+    floatTexts = floatTexts.filter(f => f.life > 0);
+    levelElapsed += dt;
+    checkLevelComplete();
+  } else if (levelDone) {
+    if (tripleMixModalOpen) {
+      // wait for the user to dismiss the modal
+    } else {
+      levelDoneTimer += dt;
+      const skip = consume('Space') || consume('Enter');
+      if (skip || levelDoneTimer > 2.0) {
+        level++;
+        genLevel(level);
+      }
+    }
+  }
+
+  for (const p of particles) {
+    p.life -= dt;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vy += 220 * dt;
+    p.vx *= 0.95;
+  }
+  if (particles.length > 800) particles.splice(0, particles.length - 800);
+  particles = particles.filter(p => p.life > 0);
+
+  // X / Enter dismisses the triple-mix tutorial modal (takes priority)
+  if (tripleMixModalOpen) {
+    if (consume('KeyX') || consume('Enter') || consume('Space')) {
+      tripleMixModalOpen = false;
+    }
+  } else {
+    // X otherwise toggles the rare-shop overlay
+    if (consume('KeyX')) tryToggleRareShopOverlay();
+  }
+
+  if (messageTimer > 0) messageTimer -= dt;
+  if (unlockBanner > 0) unlockBanner -= dt;
+  bondGlow = bondActive() ? Math.min(1, bondGlow + dt * 3) : Math.max(0, bondGlow - dt * 2);
+  if (bondActive()) save.stats.bondTime += dt;
+
+  checkAchievements();
+  tickAchievementPopup(dt);
+
+  drawAll();
+  requestAnimationFrame(tick);
+}
+
+// ============== rendering ==============
+function drawAll() {
+  ctx.fillStyle = '#0a0a0e';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  for (let y = 0; y < GH; y++)
+    for (let x = 0; x < GW; x++)
+      drawTile(x, y);
+  drawBond();
+  for (const p of particles) {
+    const a = Math.max(0, p.life / p.maxLife);
+    ctx.globalAlpha = a;
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+  }
+  ctx.globalAlpha = 1;
+  drawHazards();
+  drawCoins();
+  drawChests();
+  drawShopBlock();
+  drawEnemies();
+  drawBoss();
+  drawPainter();
+  drawMixer();
+  drawModifierOverlay();
+  drawFloatTexts();
+  drawRareShopOverlay();
+  drawHearts(painter);
+  drawHearts(mixer);
+  drawTutorialControls();
+  drawMessage();
+  drawUnlockBanner();
+  drawTripleMixModal();
+  drawDeathScreen();
+  updateHUD();
+}
+
+function drawTutorialControls() {
+  if (levelKind !== 'tutorial') return;
+  const h = 86;
+  const top = canvas.height - h; // pin to bottom (tutorial bottom rows are walls)
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.82)';
+  ctx.fillRect(0, top, canvas.width, h);
+  ctx.strokeStyle = '#2a2a36';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0.5, top + 0.5, canvas.width - 1, h - 1);
+  ctx.beginPath();
+  ctx.moveTo(canvas.width / 2, top + 6);
+  ctx.lineTo(canvas.width / 2, top + h - 6);
+  ctx.strokeStyle = '#333';
+  ctx.stroke();
+
+  const colW = canvas.width / 2;
+  const cxL = colW / 2;
+  const cxR = colW * 1.5;
+
+  // Painter (left)
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 13px ui-monospace, Menlo, monospace';
+  ctx.fillText('PAINTER · player 1 (left hand)', cxL, top + 18);
+  ctx.font = '11px ui-monospace, Menlo, monospace';
+  ctx.fillStyle = '#bbb';
+  ctx.fillText('W A S D move', cxL, top + 36);
+  // color keys, color-coded
+  ctx.font = 'bold 12px ui-monospace, Menlo, monospace';
+  const labelP = (txt, color, x, y) => { ctx.fillStyle = color; ctx.fillText(txt, x, y); };
+  labelP('R = red',    PAINT_COLOR[P_R], cxL - 80, top + 56);
+  labelP('E = yellow', PAINT_COLOR[P_Y], cxL,      top + 56);
+  labelP('Q = blue',   PAINT_COLOR[P_B], cxL + 80, top + 56);
+  ctx.fillStyle = '#888';
+  ctx.font = '10px ui-monospace, Menlo, monospace';
+  ctx.fillText('drops paint on the tile you stand on', cxL, top + 74);
+
+  // Mixer (right)
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 13px ui-monospace, Menlo, monospace';
+  ctx.fillText('MIXER · player 2 (right hand)', cxR, top + 18);
+  ctx.font = '11px ui-monospace, Menlo, monospace';
+  ctx.fillStyle = '#bbb';
+  ctx.fillText('↑ ↓ ← →  move', cxR, top + 36);
+  ctx.fillStyle = '#cfcfcf';
+  ctx.font = 'bold 12px ui-monospace, Menlo, monospace';
+  ctx.fillText('walk onto paint = pick up · walk a different primary = mix', cxR, top + 56);
+  ctx.fillStyle = '#888';
+  ctx.font = '10px ui-monospace, Menlo, monospace';
+  ctx.fillText('Shift = drop carried color', cxR, top + 74);
+}
+
+function drawTripleMixModal() {
+  if (!tripleMixModalOpen) return;
+  // dark dim
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  // panel
+  const w = 720, h = 320;
+  const x = (canvas.width - w) / 2, y = (canvas.height - h) / 2;
+  ctx.fillStyle = '#0d0d18';
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  // glow
+  const grad = ctx.createRadialGradient(x + w / 2, y + 60, 0, x + w / 2, y + 60, 280);
+  grad.addColorStop(0, 'rgba(255,255,255,0.18)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(x, y, w, h);
+
+  // title
+  ctx.fillStyle = '#ffd668';
+  ctx.font = 'bold 13px ui-monospace, Menlo, monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('MAJOR UNLOCK · LEVEL 10 BOSS DEFEATED', x + w / 2, y + 30);
+  ctx.fillStyle = '#fff';
+  ctx.font = '300 32px ui-monospace, Menlo, monospace';
+  ctx.fillText('Triple-Mix Unlocked', x + w / 2, y + 68);
+
+  // body lines
+  ctx.fillStyle = '#cfcfd8';
+  ctx.font = '13px ui-monospace, Menlo, monospace';
+  const lines = [
+    'The MIXER can now combine three colors into pure WHITE paint:',
+    '',
+    '   carry a SECONDARY (orange/green/purple) onto its remaining PRIMARY,',
+    '   or carry a PRIMARY onto a SECONDARY made from the other two.',
+    '',
+    '   orange (R+Y) + blue   = WHITE',
+    '   green  (Y+B) + red    = WHITE',
+    '   purple (R+B) + yellow = WHITE',
+    '',
+    'White paint opens any gate and damages any boss — it is the ULTRA boss\'s only weakness.',
+  ];
+  let ly = y + 100;
+  for (const ln of lines) {
+    ctx.fillText(ln, x + w / 2, ly);
+    ly += 16;
+  }
+
+  // OK button
+  const bw = 180, bh = 38;
+  const bx = x + (w - bw) / 2, by = y + h - 56;
+  ctx.fillStyle = '#1a3018';
+  ctx.fillRect(bx, by, bw, bh);
+  ctx.strokeStyle = '#9af0a8';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(bx + 0.5, by + 0.5, bw - 1, bh - 1);
+  ctx.fillStyle = '#9af0a8';
+  ctx.font = 'bold 14px ui-monospace, Menlo, monospace';
+  ctx.fillText('COOL!  (X / Enter)', bx + bw / 2, by + 25);
+}
+
+function tripleMixModalRect() {
+  const w = 720, h = 320;
+  const x = (canvas.width - w) / 2, y = (canvas.height - h) / 2;
+  const bw = 180, bh = 38;
+  return { x: x + (w - bw) / 2, y: y + h - 56, w: bw, h: bh };
+}
+
+function drawDeathScreen() {
+  if (!deathScreen) return;
+  ctx.fillStyle = 'rgba(20, 5, 8, 0.92)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = '#883a3a';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(14, 14, canvas.width - 28, canvas.height - 28);
+  ctx.fillStyle = '#fff';
+  ctx.font = '300 38px ui-monospace, Menlo, monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('a player fell', canvas.width / 2, canvas.height / 2 - 50);
+  ctx.fillStyle = '#ffd668';
+  ctx.font = '15px ui-monospace, Menlo, monospace';
+  ctx.fillText('CHOOSE YOUR FATE', canvas.width / 2, canvas.height / 2 - 18);
+  ctx.fillStyle = '#fbb';
+  ctx.font = '14px ui-monospace, Menlo, monospace';
+  ctx.fillText('press R · restart from level 1', canvas.width / 2, canvas.height / 2 + 18);
+  ctx.fillStyle = '#bfb';
+  ctx.fillText(`press C · continue from checkpoint (lvl ${save.highestCheckpoint || 1})`, canvas.width / 2, canvas.height / 2 + 42);
+  ctx.fillStyle = '#888';
+  ctx.font = '11px ui-monospace, Menlo, monospace';
+  ctx.fillText('money, upgrades, perma rewards, and skins are all preserved', canvas.width / 2, canvas.height / 2 + 70);
+}
+
+function drawTile(x, y) {
+  const px = x * TILE, py = y * TILE;
+  const t = map[y][x];
+  if (t === T_WALL) {
+    // dark wall block with raised-tile shading
+    ctx.fillStyle = '#0c0c14';
+    ctx.fillRect(px, py, TILE, TILE);
+    // top-left highlight
+    ctx.fillStyle = '#222230';
+    ctx.fillRect(px, py, TILE, 2);
+    ctx.fillRect(px, py, 2, TILE);
+    // bottom-right shadow
+    ctx.fillStyle = '#020205';
+    ctx.fillRect(px, py + TILE - 2, TILE, 2);
+    ctx.fillRect(px + TILE - 2, py, 2, TILE);
+    // tiny rivets
+    ctx.fillStyle = '#181822';
+    ctx.fillRect(px + 6, py + 6, 2, 2);
+    ctx.fillRect(px + TILE - 8, py + TILE - 8, 2, 2);
+  } else {
+    // floor — clearly lighter than walls
+    ctx.fillStyle = '#2c2c36';
+    ctx.fillRect(px, py, TILE, TILE);
+    const pColor = paint[y][x];
+    if (pColor !== P_NONE) {
+      const c = PAINT_COLOR[pColor];
+      ctx.fillStyle = c;
+      ctx.globalAlpha = pColor === P_W ? 0.96 : (pColor === P_K ? 1 : 0.85);
+      ctx.fillRect(px + 2, py + 2, TILE - 4, TILE - 4);
+      ctx.globalAlpha = 1;
+      if (pColor === P_W) {
+        ctx.strokeStyle = '#fff';
+        ctx.globalAlpha = 0.5 + 0.5 * Math.sin(timeNow * 6);
+        ctx.lineWidth = 2;
+        ctx.strokeRect(px + 1, py + 1, TILE - 2, TILE - 2);
+        ctx.globalAlpha = 1;
+      } else if (pColor === P_K) {
+        ctx.strokeStyle = '#444';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(px + 2, py + 2, TILE - 4, TILE - 4);
+      } else {
+        ctx.fillStyle = '#fff';
+        ctx.globalAlpha = 0.16;
+        ctx.fillRect(px + 4, py + 4, TILE - 12, 2);
+        ctx.globalAlpha = 1;
+      }
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
+    if (t === T_EXIT) drawExit(x, y);
+    if (t === T_GATE) drawGate(x, y);
+  }
+}
+
+function drawGate(x, y) {
+  const px = x * TILE, py = y * TILE;
+  const g = gateAt(x, y);
+  if (!g) return;
+  const c = PAINT_COLOR[g.required];
+  if (g.open) {
+    ctx.strokeStyle = c;
+    ctx.globalAlpha = 0.35;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(px + 4, py + 4, TILE - 8, TILE - 8);
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = 1;
+  } else {
+    ctx.fillStyle = '#101015';
+    ctx.fillRect(px, py, TILE, TILE);
+    ctx.strokeStyle = '#26262e';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
+    const pulse = 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(timeNow * 2.5));
+    ctx.fillStyle = c;
+    ctx.globalAlpha = pulse * 0.55;
+    ctx.fillRect(px + TILE * 0.28, py + TILE * 0.28, TILE * 0.44, TILE * 0.44);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = c;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(px + 4, py + 4, TILE - 8, TILE - 8);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = c;
+    ctx.globalAlpha = 0.7;
+    ctx.beginPath();
+    const cx = px + TILE / 2, cy = py + TILE / 2;
+    ctx.moveTo(cx - 4, cy - 6); ctx.lineTo(cx, cy - 2); ctx.lineTo(cx + 4, cy - 6);
+    ctx.moveTo(cx - 4, cy + 2); ctx.lineTo(cx, cy + 6); ctx.lineTo(cx + 4, cy + 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawExit(x, y) {
+  const px = x * TILE, py = y * TILE;
+  const cx = px + TILE / 2, cy = py + TILE / 2;
+  const allOpen = gates.length === 0 || gates.every(g => g.open);
+  if (allOpen) {
+    const pulse = 0.6 + 0.4 * (0.5 + 0.5 * Math.sin(timeNow * 4));
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, TILE);
+    grad.addColorStop(0, `rgba(255,255,255,${pulse})`);
+    grad.addColorStop(0.4, `rgba(255,255,255,${pulse * 0.35})`);
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(px - TILE/2, py - TILE/2, TILE * 2, TILE * 2);
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(cx, cy, TILE * 0.32, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, TILE * 0.42 + Math.sin(timeNow * 3) * 1.5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.lineWidth = 1;
+  } else {
+    ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, TILE * 0.32, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.lineWidth = 1;
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.fillRect(cx - 3, cy - 1, 6, 6);
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.beginPath();
+    ctx.arc(cx, cy - 1, 3, Math.PI, 0, true);
+    ctx.stroke();
+  }
+}
+
+function drawBond() {
+  const range = 2 + (save.upgrades.bond || 0) + (abilityActive('extendBond') ? 2 : 0);
+  const dist = Math.abs(painter.x - mixer.x) + Math.abs(painter.y - mixer.y);
+  if (dist === 0 || dist > range + 3) return;
+  const x1 = (painter.x + 0.5) * TILE, y1 = (painter.y + 0.5) * TILE;
+  const x2 = (mixer.x + 0.5) * TILE,   y2 = (mixer.y + 0.5) * TILE;
+  const a = Math.max(0, (range + 3 - dist) / (range + 3)) * (0.4 + 0.25 * Math.sin(timeNow * 5));
+  ctx.strokeStyle = `rgba(255,255,255,${a + bondGlow * 0.2})`;
+  ctx.lineWidth = 1.5 + bondGlow;
+  ctx.setLineDash([3, 5]);
+  ctx.beginPath();
+  ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.lineWidth = 1;
+}
+
+function drawPlayerShape(p, shape, accentDots) {
+  const cx = (p.x + 0.5) * TILE, cy = (p.y + 0.5) * TILE;
+  const blink = p.invulnT > 0 && Math.sin(p.invulnT * 30) > 0;
+  if (blink) ctx.globalAlpha = 0.4;
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + TILE * 0.25, TILE * 0.28, TILE * 0.1, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = p.hurtFlash > 0 ? '#ff8080' : '#fff';
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 2;
+  if (shape === 'circle') {
+    ctx.beginPath(); ctx.arc(cx, cy, TILE * 0.34, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  } else if (shape === 'square') {
+    ctx.fillRect(cx - TILE * 0.32, cy - TILE * 0.32, TILE * 0.64, TILE * 0.64);
+    ctx.strokeRect(cx - TILE * 0.32, cy - TILE * 0.32, TILE * 0.64, TILE * 0.64);
+  } else if (shape === 'triangle') {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - TILE * 0.36);
+    ctx.lineTo(cx + TILE * 0.34, cy + TILE * 0.30);
+    ctx.lineTo(cx - TILE * 0.34, cy + TILE * 0.30);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+  } else if (shape === 'star') {
+    drawStar(cx, cy, TILE * 0.36, TILE * 0.16, 5);
+    ctx.fill(); ctx.stroke();
+  } else if (shape === 'diamond') {
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(timeNow * 0.6);
+    ctx.beginPath();
+    ctx.moveTo(0, -TILE * 0.34); ctx.lineTo(TILE * 0.34, 0);
+    ctx.lineTo(0, TILE * 0.34); ctx.lineTo(-TILE * 0.34, 0);
+    ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+  } else if (shape === 'hex') {
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = i / 6 * Math.PI * 2 + Math.PI / 6;
+      const x = cx + Math.cos(a) * TILE * 0.34;
+      const y = cy + Math.sin(a) * TILE * 0.34;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+  } else if (shape === 'spinner') {
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(timeNow * 1.5);
+    for (let i = 0; i < 3; i++) {
+      ctx.rotate(Math.PI * 2 / 3);
+      ctx.fillRect(-TILE * 0.12, -TILE * 0.36, TILE * 0.24, TILE * 0.36);
+    }
+    ctx.beginPath(); ctx.arc(0, 0, TILE * 0.16, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  } else if (shape === 'drop') {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - TILE * 0.36);
+    ctx.bezierCurveTo(cx + TILE * 0.32, cy - TILE * 0.06, cx + TILE * 0.30, cy + TILE * 0.32, cx, cy + TILE * 0.32);
+    ctx.bezierCurveTo(cx - TILE * 0.30, cy + TILE * 0.32, cx - TILE * 0.32, cy - TILE * 0.06, cx, cy - TILE * 0.36);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+  } else if (shape === 'bolt') {
+    ctx.beginPath();
+    ctx.moveTo(cx + TILE * 0.05,  cy - TILE * 0.36);
+    ctx.lineTo(cx - TILE * 0.20,  cy + TILE * 0.04);
+    ctx.lineTo(cx,                cy + TILE * 0.04);
+    ctx.lineTo(cx - TILE * 0.05,  cy + TILE * 0.36);
+    ctx.lineTo(cx + TILE * 0.22,  cy - TILE * 0.04);
+    ctx.lineTo(cx + TILE * 0.04,  cy - TILE * 0.04);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+  } else if (shape === 'crown') {
+    ctx.beginPath();
+    ctx.moveTo(cx - TILE * 0.34, cy + TILE * 0.20);
+    ctx.lineTo(cx - TILE * 0.34, cy - TILE * 0.10);
+    ctx.lineTo(cx - TILE * 0.18, cy + TILE * 0.04);
+    ctx.lineTo(cx,                cy - TILE * 0.30);
+    ctx.lineTo(cx + TILE * 0.18, cy + TILE * 0.04);
+    ctx.lineTo(cx + TILE * 0.34, cy - TILE * 0.10);
+    ctx.lineTo(cx + TILE * 0.34, cy + TILE * 0.20);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+  } else if (shape === 'snow') {
+    ctx.save(); ctx.translate(cx, cy);
+    for (let i = 0; i < 6; i++) {
+      ctx.rotate(Math.PI / 3);
+      ctx.beginPath();
+      ctx.moveTo(0, 0); ctx.lineTo(0, -TILE * 0.36);
+      ctx.lineTo(-TILE * 0.06, -TILE * 0.26);
+      ctx.moveTo(0, -TILE * 0.36); ctx.lineTo(TILE * 0.06, -TILE * 0.26);
+      ctx.lineWidth = 2.5; ctx.stroke();
+    }
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(cx, cy, TILE * 0.08, 0, Math.PI * 2); ctx.fill();
+  } else if (shape === 'gear') {
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(timeNow * 0.5);
+    const teeth = 8;
+    ctx.beginPath();
+    for (let i = 0; i < teeth * 2; i++) {
+      const a = i / (teeth * 2) * Math.PI * 2;
+      const r = (i % 2 === 0) ? TILE * 0.36 : TILE * 0.26;
+      const x = Math.cos(a) * r, y = Math.sin(a) * r;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, TILE * 0.10, 0, Math.PI * 2);
+    ctx.fillStyle = '#000'; ctx.fill();
+    ctx.restore();
+  }
+  ctx.lineWidth = 1;
+  if (accentDots) {
+    ctx.fillStyle = PAINT_COLOR[P_R];
+    ctx.beginPath(); ctx.arc(cx - 6, cy - 3, 2.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = PAINT_COLOR[P_Y];
+    ctx.beginPath(); ctx.arc(cx + 6, cy - 3, 2.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = PAINT_COLOR[P_B];
+    ctx.beginPath(); ctx.arc(cx, cy + 5, 2.4, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawStar(cx, cy, R, r, n) {
+  ctx.beginPath();
+  for (let i = 0; i < n * 2; i++) {
+    const a = i / (n * 2) * Math.PI * 2 - Math.PI / 2;
+    const rr = i % 2 === 0 ? R : r;
+    const x = cx + Math.cos(a) * rr;
+    const y = cy + Math.sin(a) * rr;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+}
+function painterShape() { const s = SKINS.find(s => s.id === save.painterSkin); return s ? s.shape : 'circle'; }
+function mixerShape()   { const s = SKINS.find(s => s.id === save.mixerSkin);   return s ? s.shape : 'diamond'; }
+
+function drawPainter() { drawPlayerShape(painter, painterShape(), true); }
+function drawMixer() {
+  drawPlayerShape(mixer, mixerShape(), false);
+  if (mixer.carry !== P_NONE) {
+    const cx = (mixer.x + 0.5) * TILE, cy = (mixer.y + 0.5) * TILE;
+    const c = PAINT_COLOR[mixer.carry];
+    ctx.fillStyle = c;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 5.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    const pulse = 0.5 + 0.5 * Math.sin(timeNow * 5);
+    ctx.strokeStyle = c;
+    ctx.globalAlpha = 0.35 * pulse;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, TILE * 0.45 + pulse * 2, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = 1;
+  }
+}
+
+function drawHearts(p) {
+  const cx = (p.x + 0.5) * TILE;
+  const cy = p.y * TILE - 7;
+  const totalW = p.maxHp * 8;
+  for (let i = 0; i < p.maxHp; i++) {
+    const x = cx - totalW / 2 + i * 8 + 4;
+    drawHeart(x, cy, i < p.hp);
+  }
+}
+function drawHeart(x, y, filled) {
+  ctx.fillStyle = filled ? '#ff4d6d' : 'rgba(255,77,109,0.18)';
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x, y + 3);
+  ctx.bezierCurveTo(x - 4, y - 1, x - 4, y - 5, x, y - 2);
+  ctx.bezierCurveTo(x + 4, y - 5, x + 4, y - 1, x, y + 3);
+  ctx.fill();
+  ctx.stroke();
+}
+
+function drawEnemies() {
+  for (const e of enemies) {
+    if (!e.alive) continue;
+    const cx = (e.x + 0.5) * TILE;
+    const baseY = (e.y + 0.5) * TILE;
+    const bob = Math.sin(e.animT * 4) * 1.5;
+    const cy = baseY + bob;
+    const r = TILE * 0.3;
+    const c = PAINT_COLOR[e.color];
+
+    // shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.beginPath();
+    ctx.ellipse(cx, baseY + TILE * 0.22, r * 0.85, r * 0.3, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // tiny aura
+    const aura = r * (1.5 + 0.15 * Math.sin(e.animT * 3));
+    const grad = ctx.createRadialGradient(cx, cy, r * 0.4, cx, cy, aura);
+    grad.addColorStop(0, c);
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grad;
+    ctx.globalAlpha = 0.35;
+    ctx.fillRect(cx - aura, cy - aura, aura * 2, aura * 2);
+    ctx.globalAlpha = 1;
+
+    // body
+    ctx.fillStyle = c;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // single big eye
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.arc(cx, cy - 1, r * 0.42, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    const wob = Math.sin(e.animT * 3) * 1.5;
+    ctx.beginPath();
+    ctx.arc(cx + wob, cy - 2, r * 0.16, 0, Math.PI * 2);
+    ctx.fill();
+
+    // weakness label
+    const want = complement(e.color);
+    ctx.fillStyle = `rgba(255,255,255,0.7)`;
+    ctx.font = '8px ui-monospace, Menlo, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(PAINT_NAME[want], cx, baseY - r - 2);
+  }
+  ctx.lineWidth = 1;
+}
+
+function playerNearShopBlock() {
+  if (!rareShopBlock) return false;
+  const adj = (p) => Math.abs(p.x - rareShopBlock.x) + Math.abs(p.y - rareShopBlock.y) <= 1;
+  return adj(painter) || adj(mixer);
+}
+
+function tryToggleRareShopOverlay() {
+  if (rareShopOpen) { rareShopOpen = false; return; }
+  if (!rareShopBlock) return;
+  if (playerNearShopBlock()) rareShopOpen = true;
+}
+
+function drawShopBlock() {
+  if (!rareShopBlock) return;
+  const px = rareShopBlock.x * TILE, py = rareShopBlock.y * TILE;
+  const near = playerNearShopBlock();
+
+  // wood base
+  ctx.fillStyle = '#5a3820';
+  ctx.fillRect(px + 1, py + 1, TILE - 2, TILE - 2);
+  // wood grain
+  ctx.strokeStyle = '#3a2210';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(px + 4, py + 8); ctx.lineTo(px + TILE - 4, py + 8);
+  ctx.moveTo(px + 4, py + TILE - 8); ctx.lineTo(px + TILE - 4, py + TILE - 8);
+  ctx.stroke();
+  // doorway
+  ctx.fillStyle = '#1a0c06';
+  ctx.fillRect(px + 8, py + 11, TILE - 16, TILE - 14);
+  // awning
+  ctx.fillStyle = '#a85a30';
+  ctx.fillRect(px + 4, py + 5, TILE - 8, 4);
+  ctx.fillStyle = '#7a3818';
+  for (let i = 0; i < 4; i++) ctx.fillRect(px + 4 + i * 5, py + 5, 2, 4);
+  // SHOP label
+  ctx.fillStyle = '#ffd668';
+  ctx.font = 'bold 7px ui-monospace, Menlo, monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('SHOP', px + TILE / 2, py + TILE - 3);
+  // border
+  ctx.strokeStyle = near ? `rgba(255,214,104,${0.6 + 0.4 * Math.sin(timeNow * 5)})` : '#8a5a30';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
+  ctx.lineWidth = 1;
+  // floating prompt
+  if (near && !rareShopOpen) {
+    ctx.fillStyle = `rgba(0,0,0,0.7)`;
+    ctx.fillRect(px - 18, py - 16, TILE + 36, 12);
+    ctx.fillStyle = '#fff';
+    ctx.font = '9px ui-monospace, Menlo, monospace';
+    ctx.fillText('CLICK or X', px + TILE / 2, py - 7);
+  }
+}
+
+function rareShopItems() {
+  if (rareShopOverlayTab === 'skins') {
+    return SKINS.filter(s => s.rare).map(s => ({ kind: 'skin', data: s }));
+  }
+  return UPGRADES.filter(u => u.rare).map(u => ({ kind: 'upgrade', data: u }));
+}
+function rareShopTabRect(idx) {
+  // 2 tabs centered under the title
+  const tabW = 140, tabH = 28, gap = 4;
+  const totalW = tabW * 2 + gap;
+  const startX = (canvas.width - totalW) / 2;
+  return { x: startX + idx * (tabW + gap), y: 96, w: tabW, h: tabH, idx };
+}
+function rareShopItemRect(idx) {
+  const cols = 3;
+  const cellW = 290, cellH = 78, gap = 8;
+  const startX = (canvas.width - (cellW * cols + gap * (cols - 1))) / 2;
+  const startY = 140; // pushed down to make room for the upgrades/skins tabs
+  const col = idx % cols;
+  const row = Math.floor(idx / cols);
+  return { x: startX + col * (cellW + gap), y: startY + row * (cellH + gap), w: cellW, h: cellH };
+}
+function rareShopCloseRect() {
+  return { x: canvas.width - 56, y: 24, w: 32, h: 24 };
+}
+
+function drawRareShopOverlay() {
+  if (!rareShopOpen) return;
+  // dark backdrop
+  ctx.fillStyle = 'rgba(8, 4, 14, 0.94)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  // purple border
+  ctx.strokeStyle = '#b35cff';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(14, 14, canvas.width - 28, canvas.height - 28);
+
+  // title
+  ctx.fillStyle = '#d8c8ff';
+  ctx.font = '300 26px ui-monospace, Menlo, monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('RARE SHOP', canvas.width / 2, 50);
+  ctx.fillStyle = '#ffd668';
+  ctx.font = '14px ui-monospace, Menlo, monospace';
+  ctx.fillText(`$${save.money.toLocaleString()}`, canvas.width / 2, 74);
+  ctx.fillStyle = '#888';
+  ctx.font = '10px ui-monospace, Menlo, monospace';
+  ctx.fillText('click a tab · click an item to buy / equip · X or click outside to close', canvas.width / 2, 92);
+
+  // tabs
+  const tabs = ['upgrades', 'skins'];
+  for (let i = 0; i < tabs.length; i++) {
+    const t = tabs[i];
+    const r = rareShopTabRect(i);
+    const active = (rareShopOverlayTab === t);
+    ctx.fillStyle = active ? '#3a2a5a' : '#1a1424';
+    ctx.fillRect(r.x, r.y, r.w, r.h);
+    ctx.strokeStyle = active ? '#b35cff' : '#3a2848';
+    ctx.lineWidth = active ? 2 : 1;
+    ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
+    ctx.fillStyle = active ? '#fff' : '#a890c8';
+    ctx.font = `${active ? 'bold ' : ''}13px ui-monospace, Menlo, monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText(t === 'upgrades' ? 'UPGRADES' : 'SKINS', r.x + r.w / 2, r.y + 18);
+  }
+  ctx.lineWidth = 1;
+
+  // close button
+  const cb = rareShopCloseRect();
+  ctx.fillStyle = '#3a2030';
+  ctx.fillRect(cb.x, cb.y, cb.w, cb.h);
+  ctx.strokeStyle = '#b35cff';
+  ctx.strokeRect(cb.x + 0.5, cb.y + 0.5, cb.w - 1, cb.h - 1);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 14px ui-monospace, Menlo, monospace';
+  ctx.fillText('X', cb.x + cb.w / 2, cb.y + 17);
+
+  // items
+  const items = rareShopItems();
+  for (let i = 0; i < items.length; i++) {
+    drawRareShopCard(items[i], rareShopItemRect(i), i === rareShopHover);
+  }
+}
+
+function drawRareShopCard(item, r, hover) {
+  let owned = false, equipped = false, cost = 0, statusLine = '';
+  if (item.kind === 'upgrade') {
+    const tier = save.upgrades[item.data.id] || 0;
+    cost = upgradeCost(item.data, tier);
+    statusLine = `tier ${tier} · $${cost.toLocaleString()}`;
+  } else {
+    cost = item.data.cost;
+    owned = save.ownedSkins.includes(item.data.id);
+    equipped = (item.data.kind === 'painter' && save.painterSkin === item.data.id) ||
+               (item.data.kind === 'mixer'   && save.mixerSkin   === item.data.id);
+    if (equipped) statusLine = 'EQUIPPED';
+    else if (owned) statusLine = 'click to equip';
+    else statusLine = `$${cost.toLocaleString()}`;
+  }
+  const canAfford = item.kind === 'upgrade' ? save.money >= cost : (owned || save.money >= cost);
+  const bg = hover ? '#2a1a3a' : '#15101e';
+  ctx.fillStyle = bg;
+  ctx.fillRect(r.x, r.y, r.w, r.h);
+  ctx.strokeStyle = equipped ? '#4f8a52' : (canAfford ? (hover ? '#b35cff' : '#5a3a8a') : '#3a2848');
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
+
+  ctx.fillStyle = canAfford ? '#fff' : '#888';
+  ctx.font = 'bold 13px ui-monospace, Menlo, monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(item.data.name, r.x + 10, r.y + 22);
+
+  ctx.fillStyle = canAfford ? '#d8c8ff' : '#666';
+  ctx.font = '10px ui-monospace, Menlo, monospace';
+  if (item.data.desc) {
+    const desc = item.data.desc;
+    const maxChars = 38;
+    const lines = [];
+    let s = desc;
+    while (s.length > maxChars) {
+      let cut = s.lastIndexOf(' ', maxChars);
+      if (cut <= 0) cut = maxChars;
+      lines.push(s.slice(0, cut));
+      s = s.slice(cut).trim();
+    }
+    lines.push(s);
+    for (let i = 0; i < Math.min(2, lines.length); i++) {
+      ctx.fillText(lines[i], r.x + 10, r.y + 38 + i * 12);
+    }
+  }
+  ctx.fillStyle = equipped ? '#9af0a8' : (owned ? '#aaa' : '#ffd668');
+  ctx.font = 'bold 11px ui-monospace, Menlo, monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText(statusLine, r.x + r.w - 10, r.y + r.h - 8);
+}
+
+function drawHazards() {
+  for (const h of hazards) {
+    h.animT += 0.04;
+    const px = h.x * TILE, py = h.y * TILE;
+    const cx = px + TILE/2, cy = py + TILE/2;
+    const pulse = 0.5 + 0.5 * Math.sin(h.animT * 4);
+
+    // dark base
+    ctx.fillStyle = '#220a10';
+    ctx.fillRect(px + 1, py + 1, TILE - 2, TILE - 2);
+
+    // jagged warning shape
+    ctx.fillStyle = `rgba(255, 60, 80, ${0.4 + pulse * 0.5})`;
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a = i / 8 * Math.PI * 2 + h.animT * 0.6;
+      const r = (i % 2 === 0 ? TILE * 0.34 : TILE * 0.16);
+      const x = cx + Math.cos(a) * r;
+      const y = cy + Math.sin(a) * r;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    // border
+    ctx.strokeStyle = '#ff4060';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(px + 2, py + 2, TILE - 4, TILE - 4);
+    ctx.lineWidth = 1;
+  }
+}
+
+function drawModifierOverlay() {
+  if (!currentModifier) return;
+  if (currentModifier === 'dark') {
+    // Build the dark mask on an offscreen canvas, then composite it over the
+    // game. Doing this on the main canvas with destination-out punches through
+    // to the canvas background instead of revealing the game underneath.
+    if (!_modOff || _modOff.width !== canvas.width || _modOff.height !== canvas.height) {
+      _modOff = document.createElement('canvas');
+      _modOff.width = canvas.width;
+      _modOff.height = canvas.height;
+    }
+    const oc = _modOff.getContext('2d');
+    oc.clearRect(0, 0, _modOff.width, _modOff.height);
+    oc.fillStyle = 'rgba(4,5,10,0.95)';
+    oc.fillRect(0, 0, _modOff.width, _modOff.height);
+    oc.globalCompositeOperation = 'destination-out';
+    const range = 4;
+    const punch = (cx, cy, r) => {
+      const g = oc.createRadialGradient(cx, cy, 0, cx, cy, r);
+      g.addColorStop(0, 'rgba(255,255,255,1)');
+      g.addColorStop(0.65, 'rgba(255,255,255,1)');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      oc.fillStyle = g;
+      oc.fillRect(cx - r, cy - r, r * 2, r * 2);
+    };
+    punch((painter.x + 0.5) * TILE, (painter.y + 0.5) * TILE, range * TILE);
+    punch((mixer.x + 0.5)   * TILE, (mixer.y + 0.5)   * TILE, range * TILE);
+    oc.globalCompositeOperation = 'source-over';
+    ctx.drawImage(_modOff, 0, 0);
+  }
+  // banner
+  const m = modifierById(currentModifier);
+  if (m) {
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(8, canvas.height - 30, 240, 22);
+    ctx.strokeStyle = '#b35cff';
+    ctx.strokeRect(8.5, canvas.height - 29.5, 239, 21);
+    ctx.fillStyle = '#d8c8ff';
+    ctx.font = '11px ui-monospace, Menlo, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`MODIFIER · ${m.name}`, 16, canvas.height - 14);
+  }
+}
+
+function drawChests() {
+  for (const c of chests) {
+    c.animT += 0.04;
+    const px = c.x * TILE, py = c.y * TILE;
+    const cx = px + TILE / 2;
+    const baseY = py + TILE / 2;
+    const bob = Math.sin(c.animT * 2) * 1.2;
+    const cy = baseY + bob;
+
+    // golden glow
+    const aura = 14 + 3 * Math.sin(c.animT * 3);
+    const grad = ctx.createRadialGradient(cx, cy, 4, cx, cy, aura);
+    grad.addColorStop(0, 'rgba(255,214,104,0.55)');
+    grad.addColorStop(1, 'rgba(255,214,104,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(cx - aura, cy - aura, aura * 2, aura * 2);
+
+    // shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.beginPath();
+    ctx.ellipse(cx, py + TILE - 4, 10, 2.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // wood body
+    const w = 20, h = 14;
+    const bx = cx - w / 2, by = cy - h / 2;
+    ctx.fillStyle = '#5a3820';
+    ctx.fillRect(bx, by, w, h);
+    // top lid lighter
+    ctx.fillStyle = '#7a4a28';
+    ctx.fillRect(bx, by, w, 4);
+    // bottom darker
+    ctx.fillStyle = '#341c0a';
+    ctx.fillRect(bx, by + h - 2, w, 2);
+    // outline
+    ctx.strokeStyle = '#1a0c06';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(bx + 0.5, by + 0.5, w - 1, h - 1);
+    // metal bands (gold)
+    ctx.fillStyle = '#ffd668';
+    ctx.fillRect(bx, by + 4, w, 1);
+    ctx.fillRect(bx, by, 1.5, h);
+    ctx.fillRect(bx + w - 1.5, by, 1.5, h);
+    // lock
+    ctx.fillStyle = '#ffd668';
+    ctx.fillRect(cx - 2, cy - 1, 4, 5);
+    ctx.fillStyle = '#1a0c06';
+    ctx.fillRect(cx - 0.5, cy + 1, 1, 2);
+    // sparkle
+    const sp = (Math.sin(c.animT * 4) + 1) / 2;
+    ctx.fillStyle = `rgba(255,255,210,${sp})`;
+    ctx.fillRect(bx + w - 3, by + 1, 1, 1);
+    ctx.fillRect(bx + 2, by + h - 4, 1, 1);
+
+    ctx.lineWidth = 1;
+  }
+}
+
+function drawFloatTexts() {
+  for (const f of floatTexts) {
+    const a = Math.min(1, f.life / 0.5);
+    ctx.font = 'bold 16px ui-monospace, Menlo, monospace';
+    ctx.textAlign = 'center';
+    ctx.globalAlpha = a;
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#000';
+    ctx.strokeText(f.text, f.x, f.y);
+    ctx.fillStyle = f.color;
+    ctx.fillText(f.text, f.x, f.y);
+    ctx.globalAlpha = 1;
+  }
+  ctx.lineWidth = 1;
+}
+
+function drawCoins() {
+  for (const c of coins) {
+    c.animT += 0.04;
+    const useAnim = (c.fx !== undefined);
+    const cx = useAnim ? c.fx : (c.x + 0.5) * TILE;
+    const baseY = useAnim ? c.fy : (c.y + 0.5) * TILE;
+    // small vertical hover only when not flying
+    const cy = useAnim ? baseY : baseY + Math.sin(c.animT * 3) * 2;
+    if (useAnim) {
+      // brief sparkle trail behind the magnetized coin
+      ctx.fillStyle = `rgba(255,214,104,0.6)`;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 3 + Math.random() * 1.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.beginPath();
+    ctx.ellipse(cx, baseY + TILE * 0.22, 5, 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // coin
+    const w = Math.abs(Math.sin(c.animT * 2));
+    ctx.fillStyle = '#ffd668';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, 5 * Math.max(0.25, w), 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#9b6e1f';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = '#9b6e1f';
+    ctx.fillRect(cx - 1, cy - 2.5, 2, 5);
+  }
+  ctx.lineWidth = 1;
+}
+
+function drawBoss() {
+  if (!boss || !boss.alive) return;
+  const cx = (boss.x + 0.5) * TILE, cy = (boss.y + 0.5) * TILE;
+  let c = PAINT_COLOR[boss.color];
+  const r = boss.isMini ? TILE * 0.45 : (boss.ultra ? TILE * 0.65 : TILE * 0.55);
+  const flash = boss.invulnT > 0 && (Math.sin(boss.invulnT * 60) > 0);
+  if (boss.ultra) {
+    const auraR = r * (2.0 + 0.3 * Math.sin(boss.animT * 4));
+    const grad = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, auraR);
+    grad.addColorStop(0, '#0d0d18');
+    grad.addColorStop(0.5, 'rgba(60,0,80,0.55)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(cx - auraR, cy - auraR, auraR * 2, auraR * 2);
+  } else {
+    const auraR = r * (1.7 + 0.15 * Math.sin(boss.animT * 3));
+    const grad = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, auraR);
+    grad.addColorStop(0, c);
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grad;
+    ctx.globalAlpha = 0.4;
+    ctx.fillRect(cx - auraR, cy - auraR, auraR * 2, auraR * 2);
+    ctx.globalAlpha = 1;
+  }
+  ctx.fillStyle = flash ? '#fff' : (boss.ultra ? '#070710' : c);
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = boss.ultra ? '#444' : '#000';
+  ctx.lineWidth = boss.ultra ? 2 : 2.5;
+  ctx.stroke();
+  if (boss.ultra) {
+    const corePulse = 0.4 + 0.6 * Math.sin(boss.animT * 5);
+    ctx.fillStyle = `rgba(255,255,255,${corePulse * 0.6})`;
+    ctx.beginPath(); ctx.arc(cx, cy, r * 0.35, 0, Math.PI * 2); ctx.fill();
+    for (let i = 0; i < 6; i++) {
+      const a = boss.animT * 1.6 + i / 6 * Math.PI * 2;
+      const sx = cx + Math.cos(a) * (r + 8);
+      const sy = cy + Math.sin(a) * (r + 8);
+      ctx.fillStyle = '#0a0a14';
+      ctx.strokeStyle = '#666';
+      ctx.beginPath(); ctx.arc(sx, sy, 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    }
+  }
+  if (!boss.isMini && !boss.ultra) {
+    ctx.fillStyle = flash ? '#fff' : c;
+    for (let i = 0; i < 8; i++) {
+      const a = i / 8 * Math.PI * 2 + boss.animT * 0.5;
+      const sx = cx + Math.cos(a) * r;
+      const sy = cy + Math.sin(a) * r;
+      const sx2 = cx + Math.cos(a) * (r + 6);
+      const sy2 = cy + Math.sin(a) * (r + 6);
+      const sx3 = cx + Math.cos(a + 0.18) * r;
+      const sy3 = cy + Math.sin(a + 0.18) * r;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy); ctx.lineTo(sx2, sy2); ctx.lineTo(sx3, sy3);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+  }
+  ctx.fillStyle = boss.ultra ? '#ff3030' : '#000';
+  ctx.beginPath(); ctx.arc(cx - r * 0.3, cy - r * 0.05, r * 0.18, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + r * 0.3, cy - r * 0.05, r * 0.18, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fff';
+  const w = Math.sin(boss.animT * 4) * 1.5;
+  ctx.beginPath(); ctx.arc(cx - r * 0.3 + w, cy - r * 0.08, r * 0.07, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + r * 0.3 + w, cy - r * 0.08, r * 0.07, 0, Math.PI * 2); ctx.fill();
+  const barW = TILE * (boss.isMini ? 1.4 : (boss.ultra ? 2.4 : 2.0));
+  const barH = 5;
+  const bx = cx - barW / 2, by = cy - r - 14;
+  ctx.fillStyle = '#000'; ctx.fillRect(bx - 1, by - 1, barW + 2, barH + 2);
+  ctx.fillStyle = '#222'; ctx.fillRect(bx, by, barW, barH);
+  ctx.fillStyle = boss.ultra ? '#fff' : c;
+  ctx.fillRect(bx, by, barW * (boss.hp / boss.maxHp), barH);
+  if (boss.phases && boss.phases.length > 1) {
+    const dotS = 6;
+    for (let i = 0; i < boss.phases.length; i++) {
+      const dx2 = bx + i * (dotS + 4);
+      const dy2 = by - dotS - 4;
+      ctx.fillStyle = i < boss.currentPhase ? '#444' : PAINT_COLOR[boss.phases[i]];
+      ctx.fillRect(dx2, dy2, dotS, dotS);
+      ctx.strokeStyle = '#000';
+      ctx.strokeRect(dx2 + 0.5, dy2 + 0.5, dotS - 1, dotS - 1);
+    }
+  }
+  const want = boss.ultra ? P_W : complement(boss.color);
+  ctx.fillStyle = '#fff';
+  ctx.font = '10px ui-monospace, Menlo, monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(`weak to ${PAINT_NAME[want]}`, cx, by - (boss.phases && boss.phases.length > 1 ? 16 : 4));
+}
+
+function drawMessage() {
+  if (messageTimer > 0) {
+    const a = Math.min(1, messageTimer / 0.5);
+    ctx.fillStyle = `rgba(0,0,0,${0.62 * a})`;
+    const w = 700, h = 38;
+    ctx.fillRect(canvas.width / 2 - w / 2, 24, w, h);
+    ctx.strokeStyle = `rgba(255,255,255,${0.18 * a})`;
+    ctx.strokeRect(canvas.width / 2 - w / 2 + 0.5, 24.5, w - 1, h - 1);
+    ctx.fillStyle = `rgba(255,255,255,${a})`;
+    ctx.font = '14px ui-monospace, Menlo, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(message, canvas.width / 2, 48);
+  }
+  if (levelDone) {
+    const a = Math.min(1, levelDoneTimer / 0.4);
+    ctx.fillStyle = `rgba(0,0,0,${0.62 * a})`;
+    ctx.fillRect(0, canvas.height / 2 - 64, canvas.width, 128);
+    ctx.fillStyle = `rgba(255,255,255,${a})`;
+    ctx.font = '300 30px ui-monospace, Menlo, monospace';
+    ctx.textAlign = 'center';
+    const verb = boss
+      ? (boss.ultra ? 'ULTRA defeated' : (boss.isMini ? 'mini-boss defeated' : 'boss defeated'))
+      : `level ${level} cleared`;
+    ctx.fillText(verb, canvas.width / 2, canvas.height / 2 - 6);
+    ctx.fillStyle = `rgba(255,214,104,${a})`;
+    ctx.font = '15px ui-monospace, Menlo, monospace';
+    ctx.fillText(`+ $${earnedThisLevel}`, canvas.width / 2, canvas.height / 2 + 18);
+    ctx.fillStyle = `rgba(220,220,230,${a * 0.7})`;
+    ctx.font = '11px ui-monospace, Menlo, monospace';
+    ctx.fillText('better together  ·  next level loading', canvas.width / 2, canvas.height / 2 + 38);
+  }
+  if (bondActive() && bondGlow > 0.3 && !levelDone) {
+    ctx.fillStyle = `rgba(255,255,255,${0.3 * bondGlow})`;
+    ctx.font = '10px ui-monospace, Menlo, monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText('BOND  ·  +speed', canvas.width - 10, canvas.height - 10);
+  }
+}
+
+function drawUnlockBanner() {
+  if (unlockBanner <= 0) return;
+  const a = Math.min(1, unlockBanner / 1.5);
+  const info = unlockBannerInfo || { title: 'REWARD UNLOCKED', name: '', desc: '', accent: '#ffd668' };
+  const accent = info.accent || '#ffd668';
+  // backdrop
+  ctx.fillStyle = `rgba(0,0,0,${a * 0.55})`;
+  ctx.fillRect(0, canvas.height / 2 - 110, canvas.width, 130);
+  ctx.fillStyle = `rgba(255,214,104,${a * 0.05})`;
+  ctx.fillRect(0, canvas.height / 2 - 110, canvas.width, 130);
+  // title
+  ctx.fillStyle = `${accent}`;
+  ctx.globalAlpha = a;
+  ctx.font = 'bold 14px ui-monospace, Menlo, monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(info.title || 'REWARD UNLOCKED', canvas.width / 2, canvas.height / 2 - 80);
+  // name
+  ctx.fillStyle = '#fff';
+  ctx.font = '300 30px ui-monospace, Menlo, monospace';
+  ctx.fillText(info.name || '', canvas.width / 2, canvas.height / 2 - 46);
+  // description (wrap at ~70 chars)
+  ctx.fillStyle = '#cfcfd8';
+  ctx.font = '13px ui-monospace, Menlo, monospace';
+  const desc = info.desc || '';
+  const max = 70;
+  if (desc.length <= max) {
+    ctx.fillText(desc, canvas.width / 2, canvas.height / 2 - 20);
+  } else {
+    let cut = desc.lastIndexOf(' ', max);
+    if (cut < 30) cut = max;
+    ctx.fillText(desc.slice(0, cut), canvas.width / 2, canvas.height / 2 - 26);
+    ctx.fillText(desc.slice(cut).trim(), canvas.width / 2, canvas.height / 2 - 10);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function updateHUD() {
+  const painterEl = document.getElementById('hud-painter');
+  const mixerEl   = document.getElementById('hud-mixer');
+  const centerEl  = document.getElementById('hud-center');
+  painterEl.innerHTML =
+    `<strong>PAINTER</strong> &nbsp; ` +
+    `<span style="color:${PAINT_COLOR[P_R]}">●</span> ` +
+    `<span style="color:${PAINT_COLOR[P_Y]}">●</span> ` +
+    `<span style="color:${PAINT_COLOR[P_B]}">●</span>` +
+    ` &nbsp; <span style="opacity:0.6">HP ${painter.hp}/${painter.maxHp}</span>`;
+  const carry = mixer.carry === P_NONE
+    ? `<span style="opacity:0.4">empty</span>`
+    : `<span style="color:${PAINT_COLOR[mixer.carry]}">● ${PAINT_NAME[mixer.carry]}</span>`;
+  const tripleStr = save.tripleUnlocked
+    ? ` &nbsp; <span style="border:1px solid #fff;background:#222;color:#fff;padding:0 5px;border-radius:2px">★ TRIPLE-MIX</span>`
+    : '';
+  const subStr = abilityActive('subtract') ? ` &nbsp; <span style="opacity:0.7">/=subtract</span>` : '';
+  mixerEl.innerHTML =
+    `<strong>MIXER</strong> &nbsp; ${carry}${tripleStr}${subStr}` +
+    ` &nbsp; <span style="opacity:0.6">HP ${mixer.hp}/${mixer.maxHp}</span>`;
+  let centerHtml = `<strong>level ${level}</strong>`;
+  if (levelKind === 'tutorial') {
+    centerHtml += ` <span style="opacity:0.7">· tutorial</span>`;
+  } else if (levelKind === 'rareshop') {
+    centerHtml += ` <span style="color:#d8c8ff">· RARE SHOP</span>`;
+  } else if (currentModifier) {
+    const m = modifierById(currentModifier);
+    centerHtml += ` <span style="color:#d8c8ff">· ${m ? m.name : currentModifier}</span>`;
+  }
+  if (boss) {
+    const want = boss.ultra ? P_W : complement(boss.color);
+    const phaseStr = boss.phases && boss.phases.length > 1 ? ` (${boss.currentPhase + 1}/${boss.phases.length})` : '';
+    const label = boss.ultra ? 'ULTRA BOSS' : (boss.isMini ? 'mini-boss' : 'BOSS');
+    centerHtml += ` <span style="opacity:0.7">· ${label}${phaseStr}</span>` +
+      ` &nbsp; HP ${boss.hp}/${boss.maxHp} &nbsp; ` +
+      `<span style="color:${PAINT_COLOR[boss.color] || '#fff'}">●</span> → ` +
+      `<span style="color:${PAINT_COLOR[want]}">●</span>`;
+  } else {
+    const open = gates.filter(g => g.open).length;
+    const total = gates.length;
+    const dots = gates.map(g => {
+      const d = `<span style="color:${PAINT_COLOR[g.required]}">●</span>`;
+      return g.open ? `<span style="opacity:0.35">${d}</span>` : d;
+    }).join(' ');
+    centerHtml += ` <span style="opacity:0.7">· gates ${open}/${total}</span> &nbsp; ${dots}`;
+  }
+  centerHtml += ` &nbsp; <span style="color:#ffd668">$${save.money}</span>`;
+  // countdowns to next boss / ultra (subtle line below)
+  if (!boss && levelKind !== 'tutorial') {
+    const tilNext5 = (5 - (level % 5)) % 5 || 5;
+    const tilUltra = (50 - (level % 50)) % 50 || 50;
+    const isMini = ((level + tilNext5) % 10) !== 0;
+    const next5label = isMini ? 'mini-boss' : 'BOSS';
+    centerHtml += `<br><span style="opacity:0.55;font-size:10px">${next5label} in ${tilNext5} · ULTRA in ${tilUltra}</span>`;
+  }
+  centerEl.innerHTML = centerHtml;
+}
+
+// ============== shop ==============
+const shopEl = document.getElementById('shop');
+let currentTab = 'upgrades';
+function renderShop() {
+  const u = save.upgrades;
+  const inRareShop = (levelKind === 'rareshop');
+
+  const renderUpItem = (up) => {
+    const tier = u[up.id] || 0;
+    const cost = upgradeCost(up, tier);
+    const can = save.money >= cost && (!up.rare || inRareShop);
+    let cls = up.rare ? 'shop-item rare' : 'shop-item';
+    if (!can) cls += ' disabled';
+    return `<div class="${cls}" data-buy-up="${up.id}">
+      <div class="name">${up.name} <span class="lvl">tier ${tier}</span></div>
+      <span class="cost">$${cost.toLocaleString()}</span>
+      <div class="desc">${up.desc}${up.rare && !inRareShop ? ' · <em style="color:#a890c8">rare shop only</em>' : ''}</div>
+    </div>`;
+  };
+  const normalUpHtml = UPGRADES.filter(u => !u.rare).map(renderUpItem).join('');
+  // only show rare upgrades you've already bought at least once
+  const ownedRareUps = UPGRADES.filter(u => u.rare && (save.upgrades[u.id] || 0) > 0);
+  const rareUpHtml   = ownedRareUps.length ? ownedRareUps.map(renderUpItem).join('') : '';
+  const activeBadges = save.activeUps.length === 0
+    ? `<div class="shop-item disabled" style="cursor:default">
+         <div class="name" style="opacity:0.6;font-style:italic">no power-up yet</div>
+         <span class="lvl">earn from a boss</span>
+       </div>`
+    : save.activeUps.map(id => {
+        const a = ACTIVE_POOL.find(p => p.id === id);
+        return `<div class="shop-item owned" style="cursor:default">
+          <div class="name">${a ? a.name : id}</div>
+          <span class="lvl" style="color:#9af0a8">active</span>
+          <div class="desc">${a ? a.desc : ''}</div>
+        </div>`;
+      }).join('');
+  const permaBadges = save.permaUps.length === 0
+    ? `<div class="shop-item disabled" style="cursor:default">
+         <div class="name" style="opacity:0.6;font-style:italic">no permanent reward yet</div>
+         <span class="lvl">defeat ULTRA</span>
+       </div>`
+    : save.permaUps.map(id => {
+        const a = PERMA_POOL.find(p => p.id === id);
+        return `<div class="shop-item owned" style="cursor:default;border-color:#5a4a2e">
+          <div class="name">${a ? a.name : id}</div>
+          <span class="lvl" style="color:#ffd668">forever</span>
+          <div class="desc">${a ? a.desc : ''}</div>
+        </div>`;
+      }).join('');
+  const achEarnedCount = ACHIEVEMENTS.filter(a => save.achievements[a.id]).length;
+  const achHtml = ACHIEVEMENTS.map(a => {
+    const earned = !!save.achievements[a.id];
+    const isSecret = !!a.secret;
+    let cls = 'ach-item';
+    if (earned) cls += ' earned';
+    if (isSecret) cls += ' secret';
+    const name = (isSecret && !earned) ? '???' : a.name;
+    const desc = (isSecret && !earned) ? 'a hidden achievement waits…' : a.desc;
+    return `<div class="${cls}"><div class="name">${name}</div><div class="desc">${desc}</div></div>`;
+  }).join('');
+  const renderSkinItem = (s) => {
+    const owned = save.ownedSkins.includes(s.id);
+    const equipped = (s.kind === 'painter' && save.painterSkin === s.id) || (s.kind === 'mixer' && save.mixerSkin === s.id);
+    let cls = s.rare ? 'shop-item rare' : 'shop-item';
+    let action;
+    let cost;
+    const canBuy = save.money >= s.cost && (!s.rare || inRareShop);
+    if (equipped) { cls += ' owned equipped'; cost = '<span class="lvl">EQUIPPED</span>'; action = 'noop'; }
+    else if (owned) { cls += ' owned'; cost = '<span class="lvl">OWNED · click to equip</span>'; action = 'equip'; }
+    else if (canBuy) { cost = `<span class="cost">$${s.cost.toLocaleString()}</span>`; action = 'buy'; }
+    else { cls += ' disabled'; cost = `<span class="cost">$${s.cost.toLocaleString()}</span>${s.rare && !inRareShop ? ' <em style="color:#a890c8;font-size:9px">rare</em>' : ''}`; action = 'noop'; }
+    return `<div class="${cls}" data-skin="${s.id}" data-action="${action}">
+      <div class="name">${s.name}</div>
+      ${cost}
+    </div>`;
+  };
+  const normalSkinHtml = SKINS.filter(s => !s.rare).map(renderSkinItem).join('');
+  const ownedRareSkins = SKINS.filter(s => s.rare && save.ownedSkins.includes(s.id));
+  const rareSkinHtml   = ownedRareSkins.length ? ownedRareSkins.map(renderSkinItem).join('') : '';
+  const tokens = save.upgradeTokens || 0;
+  const tokenLine = tokens > 0
+    ? `<div style="background:#1d2818;border:1px solid #4a6630;color:#bfb;padding:6px 9px;border-radius:3px;margin-bottom:6px;font-size:10.5px;text-align:center">★ ${tokens} FREE UPGRADE TOKEN${tokens===1?'':'S'} · click any normal upgrade</div>`
+    : '';
+  const headerHtml = `
+    <div class="money-row"><span>WALLET</span><span class="amt">$${save.money.toLocaleString()}</span></div>
+    <div style="font-size:10px;color:var(--dim);margin:6px 0 8px">level ${save.level} · best ${save.highest}${currentModifier ? ` · <span style="color:#d8c8ff">${modifierById(currentModifier).name}</span>` : ''}${(save.highestCheckpoint||0) > 1 ? ` · checkpoint lvl ${save.highestCheckpoint}` : ''}</div>
+    ${tokenLine}
+    ${inRareShop ? `<div class="rare-banner">★ RARE SHOP OPEN ★ open the in-game shop block</div>` : ''}
+  `;
+  const upgradesBody = `
+    ${headerHtml}
+    <h2>UPGRADES</h2>
+    ${normalUpHtml}
+    <h2>POWER-UPS · until next BOSS</h2>
+    ${activeBadges}
+    <h2>PERMANENT</h2>
+    ${permaBadges}
+    <h2>RARE UPGRADES ${ownedRareUps.length ? `· owned ${ownedRareUps.length}` : '· none yet'}</h2>
+    ${ownedRareUps.length
+      ? rareUpHtml
+      : '<div class="rare-locked-note">defeat ULTRA bosses and visit rare shops to discover these</div>'}
+    <button class="reset-btn" id="reset-btn">reset all progress</button>
+  `;
+  const skinsBody = `
+    ${headerHtml}
+    <h2>SKINS</h2>
+    ${normalSkinHtml}
+    <h2>RARE SKINS ${ownedRareSkins.length ? `· owned ${ownedRareSkins.length}` : '· none yet'}</h2>
+    ${ownedRareSkins.length
+      ? rareSkinHtml
+      : '<div class="rare-locked-note">find rare shops to buy fancy cosmetics</div>'}
+  `;
+  const achBody = `
+    <div class="money-row"><span>EARNED</span><span class="amt">${achEarnedCount} / ${ACHIEVEMENTS.length}</span></div>
+    <div style="font-size:10px;color:var(--dim);margin:6px 0 10px">progress saves automatically</div>
+    ${achHtml}
+  `;
+  shopEl.innerHTML = `
+    <div class="tabs">
+      <div class="tab ${currentTab==='upgrades'?'active':''}" data-tab="upgrades">Upgrades</div>
+      <div class="tab ${currentTab==='skins'?'active':''}" data-tab="skins">Skins</div>
+      <div class="tab ${currentTab==='ach'?'active':''}" data-tab="ach">Achv. <span class="badge-num">${achEarnedCount}/${ACHIEVEMENTS.length}</span></div>
+    </div>
+    ${currentTab === 'upgrades' ? upgradesBody : currentTab === 'skins' ? skinsBody : achBody}
+  `;
+  shopEl.querySelectorAll('.tab').forEach(el => {
+    el.addEventListener('click', () => { currentTab = el.getAttribute('data-tab'); renderShop(); });
+  });
+  shopEl.querySelectorAll('[data-buy-up]').forEach(el => {
+    el.addEventListener('click', () => buyUpgrade(el.getAttribute('data-buy-up')));
+  });
+  shopEl.querySelectorAll('[data-skin]').forEach(el => {
+    el.addEventListener('click', () => {
+      const a = el.getAttribute('data-action');
+      const id = el.getAttribute('data-skin');
+      if (a === 'buy') buySkin(id);
+      else if (a === 'equip') equipSkin(id);
+    });
+  });
+  document.getElementById('reset-btn').addEventListener('click', resetSave);
+}
+function buyUpgrade(id) {
+  const up = UPGRADES.find(u => u.id === id);
+  if (!up) return;
+  if (up.rare && levelKind !== 'rareshop') { showMessage('rare items are only sold at RARE SHOPS', 2); return; }
+  const tier = save.upgrades[id] || 0;
+  const cost = upgradeCost(up, tier);
+  // free-token path (normal upgrades only)
+  if (!up.rare && (save.upgradeTokens || 0) > 0) {
+    save.upgradeTokens -= 1;
+    save.upgrades[id] = tier + 1;
+    save.stats.upgradesBought++;
+    if (id === 'hp') {
+      if (painter) { painter.maxHp = maxHpFor(); painter.hp = Math.min(painter.maxHp, painter.hp + 1); }
+      if (mixer)   { mixer.maxHp   = maxHpFor(); mixer.hp   = Math.min(mixer.maxHp,   mixer.hp + 1); }
+    }
+    showMessage(`free token spent · ${up.name} → tier ${tier + 1}`, 3);
+    saveGame(); renderShop();
+    return;
+  }
+  if (save.money < cost) return;
+  save.money -= cost;
+  save.upgrades[id] = tier + 1;
+  save.stats.upgradesBought++;
+  save.stats.totalUpgradeSpent += cost;
+  if (id === 'hp') {
+    if (painter) { painter.maxHp = maxHpFor(); painter.hp = Math.min(painter.maxHp, painter.hp + 1); }
+    if (mixer)   { mixer.maxHp   = maxHpFor(); mixer.hp   = Math.min(mixer.maxHp,   mixer.hp + 1); }
+    save.painterHp = painter ? painter.hp : maxHpFor();
+    save.mixerHp = mixer ? mixer.hp : maxHpFor();
+  }
+  saveGame(); renderShop();
+}
+function buySkin(id) {
+  const s = SKINS.find(s => s.id === id);
+  if (!s || save.money < s.cost || save.ownedSkins.includes(id)) return;
+  if (s.rare && levelKind !== 'rareshop') { showMessage('rare skins are only sold at RARE SHOPS', 2); return; }
+  save.money -= s.cost;
+  save.ownedSkins.push(id);
+  saveGame(); renderShop();
+}
+function equipSkin(id) {
+  const s = SKINS.find(s => s.id === id);
+  if (!s || !save.ownedSkins.includes(id)) return;
+  if (s.kind === 'painter') save.painterSkin = id;
+  else save.mixerSkin = id;
+  saveGame(); renderShop();
+}
+
+// ============== admin panel ==============
+const adminEl = document.getElementById('admin');
+let adminOpen = false;
+function toggleAdmin() {
+  adminOpen = !adminOpen;
+  adminEl.classList.toggle('show', adminOpen);
+  if (adminOpen) updateAdminUI();
+}
+function updateAdminUI() {
+  if (!adminOpen) return;
+  const tripleOn = save.tripleUnlocked ? 'ON' : 'off';
+  const invOn = invincible ? 'ON' : 'off';
+  const activeRows = ACTIVE_POOL.map(p => {
+    const on = save.activeUps.includes(p.id);
+    return `<button class="${on ? 'on' : ''}" data-toggle-active="${p.id}">${p.name}</button>`;
+  }).join('');
+  const permaRows = PERMA_POOL.map(p => {
+    const on = save.permaUps.includes(p.id);
+    return `<button class="${on ? 'on' : ''}" data-toggle-perma="${p.id}">${p.name}</button>`;
+  }).join('');
+  adminEl.innerHTML = `
+    <h3>Admin · press \` to close</h3>
+    <h4>Wallet · $${save.money.toLocaleString()}</h4>
+    <div class="row">
+      <button data-add-money="100">+100</button>
+      <button data-add-money="1000">+1k</button>
+      <button data-add-money="10000">+10k</button>
+      <button data-add-money="100000">+100k</button>
+      <button data-add-money="1000000">+1M</button>
+    </div>
+    <h4>Level · currently ${level}${currentModifier ? ' · ' + (modifierById(currentModifier)?.name || '') : ''}${levelKind === 'rareshop' ? ' · RARE SHOP' : ''}</h4>
+    <div class="row">
+      <button data-go-level="-1">−1</button>
+      <button data-go-level="+1">+1</button>
+      <button data-go-level="2">→2</button>
+      <button data-go-level="5">→5 mini</button>
+      <button data-go-level="10">→10 boss</button>
+      <button data-go-level="15">→15 mini</button>
+      <button data-go-level="20">→20 boss</button>
+      <button data-go-level="50">→50 ULTRA</button>
+      <button data-go-level="100">→100</button>
+      <input id="admin-level-input" type="number" placeholder="lvl"/>
+      <button id="admin-go-input">go</button>
+    </div>
+    <div class="row">
+      <button data-jump-kind="rareshop">→ next rare shop (${findNextOfKind('rareshop', level) || '?'})</button>
+      <button data-jump-kind="bonus">→ next treasure room (${findNextOfKind('bonus', level) || '?'})</button>
+      <button data-jump-modifier="1">→ next modifier (${findNextModifier(level) || '?'})</button>
+    </div>
+    <h4>Force Level Kind · regenerates current level</h4>
+    <div class="row">
+      <button data-force-kind="normal">normal</button>
+      <button data-force-kind="bonus">treasure room</button>
+      <button data-force-kind="rareshop">rare shop</button>
+      <button data-force-kind="miniboss">mini-boss</button>
+      <button data-force-kind="boss">boss</button>
+      <button data-force-kind="ultra">ULTRA</button>
+    </div>
+    <h4>Force Modifier · normal levels only</h4>
+    <div class="row">
+      <button data-force-modifier="NONE">none</button>
+      <button data-force-modifier="fog">fog</button>
+      <button data-force-modifier="mirror">mirror</button>
+      <button data-force-modifier="icy">icy</button>
+      <button data-force-modifier="dark">dark</button>
+    </div>
+    <h4>World · spawn / clear in this level</h4>
+    <div class="row">
+      <button data-spawn-chest="1">+chest near painter</button>
+      <button data-spawn-coins="5">+5 coins</button>
+      <button data-spawn-enemy="1">+1 enemy</button>
+      <button data-spawn-hazards="3">+3 hazards</button>
+    </div>
+    <div class="row">
+      <button data-clear="enemies">clear enemies</button>
+      <button data-clear="coins">clear coins</button>
+      <button data-clear="hazards">clear hazards</button>
+      <button data-clear="chests">clear chests</button>
+    </div>
+    <h4>Progression</h4>
+    <div class="row">
+      <button data-tokens="1">+1 token</button>
+      <button data-tokens="5">+5 tokens</button>
+      <button data-tokens="-9999">clear tokens</button>
+      <button data-checkpoint="cur">checkpoint → ${level}</button>
+      <button data-checkpoint="0">clear checkpoint</button>
+      <button data-unlock-skins="1">unlock all skins</button>
+    </div>
+    <h4>Triple-mix · ${tripleOn}</h4>
+    <div class="row">
+      <button data-toggle-triple="1">toggle triple-mix</button>
+    </div>
+    <h4>Active power-ups</h4>
+    <div class="row">${activeRows}</div>
+    <div class="row">
+      <button data-active-all="1">give all</button>
+      <button data-active-clear="1">clear</button>
+    </div>
+    <h4>Permanent rewards</h4>
+    <div class="row">${permaRows}</div>
+    <div class="row">
+      <button data-perma-all="1">give all</button>
+      <button data-perma-clear="1">clear</button>
+    </div>
+    <h4>HP / Combat</h4>
+    <div class="row">
+      <button data-heal="1">full heal</button>
+      <button data-invincible="1">invincible · ${invOn}</button>
+      <button data-clear-paint="1">clear paint</button>
+    </div>
+    <h4>Achievements · ${ACHIEVEMENTS.filter(a => save.achievements[a.id]).length} / ${ACHIEVEMENTS.length}</h4>
+    <div class="row">${ACHIEVEMENTS.map(a => {
+      const on = !!save.achievements[a.id];
+      const lbl = a.secret ? `★ ${a.name}` : a.name;
+      return `<button class="${on ? 'on' : ''}" data-toggle-ach="${a.id}" title="${a.desc.replace(/"/g, '&quot;')}">${lbl}</button>`;
+    }).join('')}</div>
+    <div class="row">
+      <button data-ach-all="1">unlock all</button>
+      <button data-ach-clear="1">clear all</button>
+      <button data-ach-rainbow="1">toggle rainbow bg</button>
+    </div>
+    <h4 style="color:#d88">Danger</h4>
+    <div class="row">
+      <button data-full-reset="1" style="background:#1d1418;border-color:#4a2730;color:#d88">FULL RESET (wipe save)</button>
+    </div>
+    <div class="info">
+      Backtick (\`) toggles this panel. Changes save to localStorage automatically.
+    </div>
+  `;
+  adminEl.querySelectorAll('[data-add-money]').forEach(el => {
+    el.addEventListener('click', () => { save.money += +el.getAttribute('data-add-money'); saveGame(); renderShop(); updateAdminUI(); });
+  });
+  adminEl.querySelectorAll('[data-go-level]').forEach(el => {
+    el.addEventListener('click', () => {
+      const v = el.getAttribute('data-go-level');
+      let target;
+      if (v === '+1') target = level + 1;
+      else if (v === '-1') target = Math.max(1, level - 1);
+      else target = +v;
+      level = Math.max(1, target);
+      save.painterHp = maxHpFor();
+      save.mixerHp = maxHpFor();
+      genLevel(level);
+    });
+  });
+  document.getElementById('admin-go-input').addEventListener('click', () => {
+    const inp = document.getElementById('admin-level-input');
+    const v = parseInt(inp.value, 10);
+    if (!isFinite(v) || v < 1) return;
+    level = v;
+    save.painterHp = maxHpFor();
+    save.mixerHp = maxHpFor();
+    genLevel(level);
+  });
+  adminEl.querySelectorAll('[data-toggle-triple]').forEach(el => {
+    el.addEventListener('click', () => { save.tripleUnlocked = !save.tripleUnlocked; saveGame(); updateHUD(); renderShop(); updateAdminUI(); });
+  });
+  adminEl.querySelectorAll('[data-toggle-active]').forEach(el => {
+    el.addEventListener('click', () => {
+      const id = el.getAttribute('data-toggle-active');
+      const i = save.activeUps.indexOf(id);
+      if (i >= 0) save.activeUps.splice(i, 1);
+      else save.activeUps.push(id);
+      saveGame(); renderShop(); updateAdminUI();
+    });
+  });
+  adminEl.querySelectorAll('[data-toggle-perma]').forEach(el => {
+    el.addEventListener('click', () => {
+      const id = el.getAttribute('data-toggle-perma');
+      const i = save.permaUps.indexOf(id);
+      if (i >= 0) save.permaUps.splice(i, 1);
+      else save.permaUps.push(id);
+      saveGame(); renderShop(); updateAdminUI();
+    });
+  });
+  adminEl.querySelectorAll('[data-active-all]').forEach(el => {
+    el.addEventListener('click', () => { save.activeUps = ACTIVE_POOL.map(p => p.id); saveGame(); renderShop(); updateAdminUI(); });
+  });
+  adminEl.querySelectorAll('[data-active-clear]').forEach(el => {
+    el.addEventListener('click', () => { save.activeUps = []; saveGame(); renderShop(); updateAdminUI(); });
+  });
+  adminEl.querySelectorAll('[data-perma-all]').forEach(el => {
+    el.addEventListener('click', () => { save.permaUps = PERMA_POOL.map(p => p.id); saveGame(); renderShop(); updateAdminUI(); });
+  });
+  adminEl.querySelectorAll('[data-perma-clear]').forEach(el => {
+    el.addEventListener('click', () => { save.permaUps = []; saveGame(); renderShop(); updateAdminUI(); });
+  });
+  adminEl.querySelectorAll('[data-heal]').forEach(el => {
+    el.addEventListener('click', () => {
+      if (painter) painter.hp = painter.maxHp;
+      if (mixer)   mixer.hp = mixer.maxHp;
+      save.painterHp = painter ? painter.hp : maxHpFor();
+      save.mixerHp = mixer ? mixer.hp : maxHpFor();
+      saveGame(); updateAdminUI();
+    });
+  });
+  adminEl.querySelectorAll('[data-invincible]').forEach(el => {
+    el.addEventListener('click', () => { invincible = !invincible; updateAdminUI(); });
+  });
+  adminEl.querySelectorAll('[data-clear-paint]').forEach(el => {
+    el.addEventListener('click', () => { paint = makeGrid(P_NONE); updateAdminUI(); });
+  });
+  adminEl.querySelectorAll('[data-full-reset]').forEach(el => {
+    el.addEventListener('click', () => { resetSave(); updateAdminUI(); });
+  });
+  adminEl.querySelectorAll('[data-jump-kind]').forEach(el => {
+    el.addEventListener('click', () => {
+      const kind = el.getAttribute('data-jump-kind');
+      const t = findNextOfKind(kind, level);
+      if (t === null) return;
+      level = t;
+      save.painterHp = maxHpFor(); save.mixerHp = maxHpFor();
+      genLevel(level); updateAdminUI();
+    });
+  });
+  adminEl.querySelectorAll('[data-jump-modifier]').forEach(el => {
+    el.addEventListener('click', () => {
+      const t = findNextModifier(level);
+      if (t === null) return;
+      level = t;
+      save.painterHp = maxHpFor(); save.mixerHp = maxHpFor();
+      genLevel(level); updateAdminUI();
+    });
+  });
+  adminEl.querySelectorAll('[data-force-rareshop]').forEach(el => {
+    el.addEventListener('click', () => {
+      forceNextKind = 'rareshop';
+      genLevel(level);
+      forceNextKind = null;
+      updateAdminUI();
+    });
+  });
+  adminEl.querySelectorAll('[data-force-kind]').forEach(el => {
+    el.addEventListener('click', () => {
+      forceNextKind = el.getAttribute('data-force-kind');
+      save.painterHp = maxHpFor(); save.mixerHp = maxHpFor();
+      genLevel(level);
+      forceNextKind = null;
+      updateAdminUI();
+    });
+  });
+  adminEl.querySelectorAll('[data-force-modifier]').forEach(el => {
+    el.addEventListener('click', () => {
+      forceNextModifier = el.getAttribute('data-force-modifier');
+      genLevel(level);
+      forceNextModifier = null;
+      updateAdminUI();
+    });
+  });
+  adminEl.querySelectorAll('[data-spawn-chest]').forEach(el => {
+    el.addEventListener('click', () => {
+      // place a chest on a free floor tile near the painter
+      const tries = [[0,1],[1,0],[0,-1],[-1,0],[1,1],[-1,1],[1,-1],[-1,-1],[0,2],[2,0],[0,-2],[-2,0]];
+      for (const [dx, dy] of tries) {
+        const x = painter.x + dx, y = painter.y + dy;
+        if (!inBounds(x, y) || map[y][x] !== T_FLOOR) continue;
+        if (chests.some(c => c.x === x && c.y === y)) continue;
+        if (coins.some(c => c.x === x && c.y === y)) continue;
+        if (enemies.some(e => e.x === x && e.y === y)) continue;
+        placeChest(x, y, chestValue(level, true));
+        spawnFloatText(x, y, 'CHEST', '#ffd668');
+        return;
+      }
+    });
+  });
+  adminEl.querySelectorAll('[data-spawn-coins]').forEach(el => {
+    el.addEventListener('click', () => {
+      const want = parseInt(el.getAttribute('data-spawn-coins'), 10) || 1;
+      let placed = 0, tries = 0;
+      while (placed < want && tries++ < 200) {
+        const x = Math.floor(Math.random() * GW);
+        const y = Math.floor(Math.random() * GH);
+        if (map[y][x] !== T_FLOOR) continue;
+        if (coins.some(c => c.x === x && c.y === y)) continue;
+        if (chests.some(c => c.x === x && c.y === y)) continue;
+        coins.push({ x, y, value: 8 + Math.floor(Math.random() * 8) + Math.floor(level * 0.5), animT: Math.random() * 6.28 });
+        placed++;
+      }
+    });
+  });
+  adminEl.querySelectorAll('[data-spawn-enemy]').forEach(el => {
+    el.addEventListener('click', () => {
+      // place an enemy at a far floor tile
+      const dist = bfsFloorDist(painter.x, painter.y);
+      const cands = [];
+      for (let y = 0; y < GH; y++)
+        for (let x = 0; x < GW; x++) {
+          if (map[y][x] !== T_FLOOR) continue;
+          if (dist[y][x] < 4) continue;
+          if (chests.some(c => c.x === x && c.y === y)) continue;
+          if (enemies.some(e => e.x === x && e.y === y)) continue;
+          cands.push([x, y]);
+        }
+      if (!cands.length) return;
+      const [x, y] = cands[Math.floor(Math.random() * cands.length)];
+      enemies.push({
+        x, y, color: enemyColorFor(level),
+        moveT: 1.0, attackCD: 1.0, alive: true, animT: Math.random() * 6.28,
+      });
+    });
+  });
+  adminEl.querySelectorAll('[data-spawn-hazards]').forEach(el => {
+    el.addEventListener('click', () => {
+      const want = parseInt(el.getAttribute('data-spawn-hazards'), 10) || 1;
+      let placed = 0, tries = 0;
+      while (placed < want && tries++ < 200) {
+        const x = Math.floor(Math.random() * GW);
+        const y = Math.floor(Math.random() * GH);
+        if (map[y][x] !== T_FLOOR) continue;
+        if (hazards.some(h => h.x === x && h.y === y)) continue;
+        if (Math.abs(x - painter.x) + Math.abs(y - painter.y) < 3) continue;
+        if (Math.abs(x - mixer.x)   + Math.abs(y - mixer.y)   < 3) continue;
+        if (chests.some(c => Math.abs(c.x - x) + Math.abs(c.y - y) <= 2)) continue;
+        hazards.push({ x, y, animT: Math.random() * 6.28 });
+        placed++;
+      }
+    });
+  });
+  adminEl.querySelectorAll('[data-clear]').forEach(el => {
+    el.addEventListener('click', () => {
+      const what = el.getAttribute('data-clear');
+      if (what === 'enemies') enemies = [];
+      else if (what === 'coins') coins = [];
+      else if (what === 'hazards') hazards = [];
+      else if (what === 'chests') chests = [];
+    });
+  });
+  adminEl.querySelectorAll('[data-tokens]').forEach(el => {
+    el.addEventListener('click', () => {
+      const v = parseInt(el.getAttribute('data-tokens'), 10);
+      if (v < 0) save.upgradeTokens = 0;
+      else save.upgradeTokens = (save.upgradeTokens || 0) + v;
+      saveGame(); renderShop(); updateAdminUI();
+    });
+  });
+  adminEl.querySelectorAll('[data-checkpoint]').forEach(el => {
+    el.addEventListener('click', () => {
+      const v = el.getAttribute('data-checkpoint');
+      save.highestCheckpoint = (v === 'cur') ? level : 0;
+      saveGame(); renderShop(); updateAdminUI();
+    });
+  });
+  adminEl.querySelectorAll('[data-unlock-skins]').forEach(el => {
+    el.addEventListener('click', () => {
+      save.ownedSkins = SKINS.map(s => s.id);
+      saveGame(); renderShop(); updateAdminUI();
+    });
+  });
+  adminEl.querySelectorAll('[data-toggle-ach]').forEach(el => {
+    el.addEventListener('click', () => {
+      const id = el.getAttribute('data-toggle-ach');
+      if (save.achievements[id]) {
+        delete save.achievements[id];
+        if (id === 'allColors') applyRainbow(false);
+      } else {
+        save.achievements[id] = true;
+        if (id === 'allColors') applyRainbow(true);
+      }
+      saveGame(); renderShop(); updateAdminUI();
+    });
+  });
+  adminEl.querySelectorAll('[data-ach-all]').forEach(el => {
+    el.addEventListener('click', () => {
+      ACHIEVEMENTS.forEach(a => save.achievements[a.id] = true);
+      applyRainbow(true);
+      saveGame(); renderShop(); updateAdminUI();
+    });
+  });
+  adminEl.querySelectorAll('[data-ach-clear]').forEach(el => {
+    el.addEventListener('click', () => {
+      save.achievements = {};
+      applyRainbow(false);
+      saveGame(); renderShop(); updateAdminUI();
+    });
+  });
+  adminEl.querySelectorAll('[data-ach-rainbow]').forEach(el => {
+    el.addEventListener('click', () => { applyRainbow(!document.body.classList.contains('rainbow')); });
+  });
+}
+
+// ============== start ==============
+loadGame();
+if (save.achievements && save.achievements.allColors) applyRainbow(true);
+level = save.level || 1;
+genLevel(level);
+renderShop();
+requestAnimationFrame(t => { lastT = t; tick(t); });
+</script>
+</body>
+</html>
