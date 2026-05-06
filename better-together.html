@@ -94,6 +94,8 @@
   .controls em { color: #cfcfcf; font-style: normal; }
   .controls .small { font-size: 10.5px; opacity: 0.75; }
   .footer { color: #3c3c44; font-size: 10px; margin-top: 18px; letter-spacing: 0.2em; text-transform: uppercase; }
+  #story-link { cursor: pointer; text-decoration: underline; transition: color 0.2s; }
+  #story-link:hover { color: #ffd668; }
   .reset-btn { width: 100%; background: #1d1418; border: 1px solid #4a2730; color: #d88; padding: 8px 10px; font-size: 11px; cursor: pointer; font-family: inherit; border-radius: 3px; margin-top: 16px; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 600; }
   .reset-btn:hover { background: #3a1820; color: #ff8a8a; border-color: #883a3a; }
 
@@ -253,7 +255,7 @@
     walk a primary while empty to <em>pick up</em> · walk a different primary while carrying to <em>mix</em> · paint a gate's secondary next to it to open it<br>
     every 5 lvls: <em>mini-boss</em> · every 10: <em>boss</em> (drops a power-up + unlocks white at lvl 10) · every 50: <em>ULTRA</em> (only white damages it) · on death: <kbd>R</kbd> restart or <kbd>C</kbd> continue from checkpoint · <kbd>Space</kbd> to skip the level-clear pause
   </div>
-  <div class="footer">two players · one keyboard · infinite levels</div>
+  <div class="footer">two players · one keyboard · infinite levels &nbsp;·&nbsp; <span id="story-link">read the lore</span></div>
 
   <div id="admin"></div>
   <div id="ach-popup"></div>
@@ -270,6 +272,14 @@ canvas.addEventListener('click', (e) => {
   const rect = canvas.getBoundingClientRect();
   const x = (e.clientX - rect.left) / rect.width * canvas.width;
   const y = (e.clientY - rect.top) / rect.height * canvas.height;
+  // story modal click → close on the OK button
+  if (storyModalOpen) {
+    const r = storyModalRect();
+    if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
+      storyModalOpen = false;
+    }
+    return;
+  }
   // triple-mix modal takes priority — any click anywhere on/inside the OK button dismisses it
   if (tripleMixModalOpen) {
     const r = tripleMixModalRect();
@@ -414,6 +424,7 @@ const DEFAULT_SAVE = {
   mixerHp: 3,
   highestCheckpoint: 0,
   upgradeTokens: 0,
+  firstSeen: false,
   achievements: {},
   stats: {
     totalEarned: 0,
@@ -619,6 +630,7 @@ let unlockBannerInfo = null;   // { title, name, desc, accent }
 let pendingFullReset = 0;
 let deathScreen = false;       // shows R / C choice after death
 let tripleMixModalOpen = false; // post-lvl-10 tutorial modal · pauses level advance
+let storyModalOpen = false;     // lore modal · pauses gameplay while open
 let earnedThisLevel = 0;
 let invincible = false; // admin flag
 let achievementQueue = [];
@@ -2169,7 +2181,7 @@ function tick(t) {
   if (painter.hurtFlash > 0) painter.hurtFlash -= dt;
   if (mixer.hurtFlash > 0)   mixer.hurtFlash   -= dt;
 
-  if (!levelDone && !rareShopOpen) {
+  if (!levelDone && !rareShopOpen && !storyModalOpen && !tripleMixModalOpen) {
     if (painter.moveT === 0) {
       // icy momentum first
       if (currentModifier === 'icy' && icyMomentum.painter) {
@@ -2253,8 +2265,12 @@ function tick(t) {
   if (particles.length > 800) particles.splice(0, particles.length - 800);
   particles = particles.filter(p => p.life > 0);
 
-  // X / Enter dismisses the triple-mix tutorial modal (takes priority)
-  if (tripleMixModalOpen) {
+  // story modal first — pause everything until dismissed
+  if (storyModalOpen) {
+    if (consume('KeyX') || consume('Enter') || consume('Space') || consume('Escape')) {
+      storyModalOpen = false;
+    }
+  } else if (tripleMixModalOpen) {
     if (consume('KeyX') || consume('Enter') || consume('Space')) {
       tripleMixModalOpen = false;
     }
@@ -2307,6 +2323,7 @@ function drawAll() {
   drawMessage();
   drawUnlockBanner();
   drawTripleMixModal();
+  drawStoryModal();
   drawDeathScreen();
   updateHUD();
 }
@@ -2431,6 +2448,93 @@ function tripleMixModalRect() {
   const x = (canvas.width - w) / 2, y = (canvas.height - h) / 2;
   const bw = 180, bh = 38;
   return { x: x + (w - bw) / 2, y: y + h - 56, w: bw, h: bh };
+}
+
+const STORY_LINES = [
+  '',
+  'In the Beginning, the world was full of color.',
+  '',
+  'Then the DRAIN came — a slow grey that swallowed every',
+  'hue until only black and white remained.',
+  '',
+  'But two were saved.',
+  '',
+  'The PAINTER kept the three Primary Seeds — red, yellow,',
+  'blue — pressed close. Each step plants a hue back.',
+  '',
+  'The MIXER knows the old recipes. Two seeds become a',
+  'secondary; three fuse into WHITE — the first light, and',
+  'the only thing the Drain truly fears.',
+  '',
+  'Alone, neither can restore the world. Together, they remake it.',
+  '',
+  'Minions of the Drain patrol the corridors. Bosses guard each',
+  'tenth threshold. Every fiftieth, the Drain itself awakens —',
+  'the ULTRA, blacker than black, undone only by purest white.',
+  '',
+  'Restore enough, and color will come home.',
+];
+
+function drawStoryModal() {
+  if (!storyModalOpen) return;
+  // dim the world
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.86)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  // panel
+  const w = 760, h = 540;
+  const x = (canvas.width - w) / 2;
+  const y = (canvas.height - h) / 2;
+  ctx.fillStyle = '#0a0a14';
+  ctx.fillRect(x, y, w, h);
+  // rainbow gradient border
+  const g = ctx.createLinearGradient(x, y, x + w, y + h);
+  g.addColorStop(0,    PAINT_COLOR[P_R]);
+  g.addColorStop(0.2,  PAINT_COLOR[P_O]);
+  g.addColorStop(0.4,  PAINT_COLOR[P_Y]);
+  g.addColorStop(0.6,  PAINT_COLOR[P_G]);
+  g.addColorStop(0.8,  PAINT_COLOR[P_B]);
+  g.addColorStop(1,    PAINT_COLOR[P_P]);
+  ctx.strokeStyle = g;
+  ctx.lineWidth = 2.5;
+  ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+  ctx.lineWidth = 1;
+
+  // title
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffd668';
+  ctx.font = 'bold 12px ui-monospace, Menlo, monospace';
+  ctx.fillText('THE LORE', canvas.width / 2, y + 30);
+  ctx.fillStyle = '#fff';
+  ctx.font = '300 34px ui-monospace, Menlo, monospace';
+  ctx.fillText('Two of a Hue', canvas.width / 2, y + 68);
+
+  // body
+  ctx.fillStyle = '#cfcfd8';
+  ctx.font = '13px ui-monospace, Menlo, monospace';
+  let ly = y + 100;
+  for (const ln of STORY_LINES) {
+    ctx.fillText(ln, canvas.width / 2, ly);
+    ly += 17;
+  }
+
+  // OK button
+  const r = storyModalRect();
+  ctx.fillStyle = '#1a1825';
+  ctx.fillRect(r.x, r.y, r.w, r.h);
+  ctx.strokeStyle = '#d8c8ff';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
+  ctx.fillStyle = '#d8c8ff';
+  ctx.font = 'bold 14px ui-monospace, Menlo, monospace';
+  ctx.fillText('Let\'s remake it.  (X / Enter)', r.x + r.w / 2, r.y + 25);
+}
+
+function storyModalRect() {
+  const w = 760, h = 540;
+  const x = (canvas.width - w) / 2;
+  const y = (canvas.height - h) / 2;
+  const bw = 280, bh = 38;
+  return { x: x + (w - bw) / 2, y: y + h - 60, w: bw, h: bh };
 }
 
 function drawDeathScreen() {
@@ -4007,6 +4111,16 @@ if (save.achievements && save.achievements.allColors) applyRainbow(true);
 level = save.level || 1;
 genLevel(level);
 renderShop();
+// first ever launch → introduce the story; then never again unless the player asks
+if (!save.firstSeen) {
+  storyModalOpen = true;
+  save.firstSeen = true;
+  saveGame();
+}
+document.getElementById('story-link').addEventListener('click', () => {
+  storyModalOpen = true;
+  canvas.focus();
+});
 requestAnimationFrame(t => { lastT = t; tick(t); });
 </script>
 </body>
