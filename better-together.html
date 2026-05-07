@@ -272,12 +272,9 @@ canvas.addEventListener('click', (e) => {
   const rect = canvas.getBoundingClientRect();
   const x = (e.clientX - rect.left) / rect.width * canvas.width;
   const y = (e.clientY - rect.top) / rect.height * canvas.height;
-  // story modal click → close on the OK button
-  if (storyModalOpen) {
-    const r = storyModalRect();
-    if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
-      storyModalOpen = false;
-    }
+  // intro cutscene takes priority — any click advances
+  if (introActive) {
+    advanceIntro();
     return;
   }
   // triple-mix modal takes priority — any click anywhere on/inside the OK button dismisses it
@@ -630,7 +627,14 @@ let unlockBannerInfo = null;   // { title, name, desc, accent }
 let pendingFullReset = 0;
 let deathScreen = false;       // shows R / C choice after death
 let tripleMixModalOpen = false; // post-lvl-10 tutorial modal · pauses level advance
-let storyModalOpen = false;     // lore modal · pauses gameplay while open
+let storyModalOpen = false;     // (legacy) modal version — kept for fallback
+// intro cutscene state
+let introActive = false;
+let introPhase = 'lines';       // 'lines' | 'white' | 'fadeIn'
+let introLineIdx = 0;
+let introLineT = 0;
+let introWhiteT = 0;
+let introFadeT = 0;
 let earnedThisLevel = 0;
 let invincible = false; // admin flag
 let achievementQueue = [];
@@ -2181,7 +2185,7 @@ function tick(t) {
   if (painter.hurtFlash > 0) painter.hurtFlash -= dt;
   if (mixer.hurtFlash > 0)   mixer.hurtFlash   -= dt;
 
-  if (!levelDone && !rareShopOpen && !storyModalOpen && !tripleMixModalOpen) {
+  if (!levelDone && !rareShopOpen && !tripleMixModalOpen && !introActive) {
     if (painter.moveT === 0) {
       // icy momentum first
       if (currentModifier === 'icy' && icyMomentum.painter) {
@@ -2265,11 +2269,11 @@ function tick(t) {
   if (particles.length > 800) particles.splice(0, particles.length - 800);
   particles = particles.filter(p => p.life > 0);
 
-  // story modal first — pause everything until dismissed
-  if (storyModalOpen) {
-    if (consume('KeyX') || consume('Enter') || consume('Space') || consume('Escape')) {
-      storyModalOpen = false;
-    }
+  // intro cutscene — owns input while playing
+  if (introActive) {
+    tickIntro(dt);
+    if (consume('Escape')) skipIntro();
+    else if (consume('Space') || consume('Enter') || consume('KeyX')) advanceIntro();
   } else if (tripleMixModalOpen) {
     if (consume('KeyX') || consume('Enter') || consume('Space')) {
       tripleMixModalOpen = false;
@@ -2323,8 +2327,8 @@ function drawAll() {
   drawMessage();
   drawUnlockBanner();
   drawTripleMixModal();
-  drawStoryModal();
   drawDeathScreen();
+  drawIntro();
   updateHUD();
 }
 
@@ -2450,30 +2454,116 @@ function tripleMixModalRect() {
   return { x: x + (w - bw) / 2, y: y + h - 56, w: bw, h: bh };
 }
 
-const STORY_LINES = [
-  '',
-  'In the Beginning, the world was full of color.',
-  '',
-  'Then the DRAIN came — a slow grey that swallowed every',
-  'hue until only black and white remained.',
-  '',
+const STORY_LINES = []; // (legacy modal — unused, replaced by INTRO_LINES below)
+
+// Each entry is a paragraph shown one at a time. \n splits visual lines.
+const INTRO_LINES = [
+  'In the Beginning,\nthe world was full of color.',
+  'Then the Drain came —\na slow grey that swallowed every hue\nuntil only black and white remained.',
   'But two were saved.',
-  '',
-  'The PAINTER kept the three Primary Seeds — red, yellow,',
-  'blue — pressed close. Each step plants a hue back.',
-  '',
-  'The MIXER knows the old recipes. Two seeds become a',
-  'secondary; three fuse into WHITE — the first light, and',
-  'the only thing the Drain truly fears.',
-  '',
-  'Alone, neither can restore the world. Together, they remake it.',
-  '',
-  'Minions of the Drain patrol the corridors. Bosses guard each',
-  'tenth threshold. Every fiftieth, the Drain itself awakens —',
-  'the ULTRA, blacker than black, undone only by purest white.',
-  '',
-  'Restore enough, and color will come home.',
+  'The Painter kept the three Primary Seeds —\nred, yellow, blue — pressed close.\nEach step plants a hue back into the world.',
+  'The Mixer knows the old recipes.\nTwo seeds become a secondary;\nthree fuse into WHITE —\nthe only thing the Drain truly fears.',
+  'Alone, neither can restore the world.\nTogether, they remake it.',
 ];
+
+const INTRO_FADE = 0.6;   // seconds
+const INTRO_HOLD = 2.2;
+const INTRO_OUT  = 0.6;
+const INTRO_PER_LINE = INTRO_FADE + INTRO_HOLD + INTRO_OUT;
+const INTRO_WHITE_DUR = 1.6;
+const INTRO_FADE_DUR  = 2.0;
+
+function playIntro() {
+  introActive = true;
+  introPhase = 'lines';
+  introLineIdx = 0;
+  introLineT = 0;
+  introWhiteT = 0;
+  introFadeT = 0;
+}
+
+function tickIntro(dt) {
+  if (!introActive) return;
+  if (introPhase === 'lines') {
+    introLineT += dt;
+    if (introLineT >= INTRO_PER_LINE) {
+      introLineIdx++;
+      introLineT = 0;
+      if (introLineIdx >= INTRO_LINES.length) {
+        introPhase = 'white';
+      }
+    }
+  } else if (introPhase === 'white') {
+    introWhiteT += dt;
+    if (introWhiteT >= INTRO_WHITE_DUR) {
+      introPhase = 'fadeIn';
+    }
+  } else if (introPhase === 'fadeIn') {
+    introFadeT += dt;
+    if (introFadeT >= INTRO_FADE_DUR) {
+      introActive = false;
+    }
+  }
+}
+
+function advanceIntro() {
+  if (!introActive) return;
+  if (introPhase === 'lines') {
+    introLineT = INTRO_PER_LINE; // tickIntro will advance to next line/phase
+  } else if (introPhase === 'white') {
+    introWhiteT = INTRO_WHITE_DUR;
+  } else if (introPhase === 'fadeIn') {
+    introFadeT = INTRO_FADE_DUR;
+  }
+}
+
+function skipIntro() { introActive = false; }
+
+function drawIntro() {
+  if (!introActive) return;
+  const W = canvas.width, H = canvas.height;
+  if (introPhase === 'lines') {
+    // pure black scene with the current paragraph
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+    // alpha across the line: fade in, hold, fade out
+    let a = 0;
+    if (introLineT < INTRO_FADE) a = introLineT / INTRO_FADE;
+    else if (introLineT < INTRO_FADE + INTRO_HOLD) a = 1;
+    else a = 1 - (introLineT - INTRO_FADE - INTRO_HOLD) / INTRO_OUT;
+    a = Math.max(0, Math.min(1, a));
+    const para = INTRO_LINES[introLineIdx] || '';
+    const lines = para.split('\n');
+    ctx.fillStyle = `rgba(255,255,255,${a})`;
+    ctx.font = '300 26px ui-monospace, Menlo, monospace';
+    ctx.textAlign = 'center';
+    const lineH = 38;
+    const startY = H / 2 - (lines.length - 1) * lineH / 2;
+    for (let i = 0; i < lines.length; i++) {
+      ctx.fillText(lines[i], W / 2, startY + i * lineH);
+    }
+    // skip hint (only after first line so it doesn't dominate)
+    if (introLineIdx > 0 || introLineT > 1.0) {
+      ctx.fillStyle = `rgba(255,255,255,0.30)`;
+      ctx.font = '11px ui-monospace, Menlo, monospace';
+      ctx.fillText('Space · next   ·   Esc · skip intro', W / 2, H - 26);
+    }
+  } else if (introPhase === 'white') {
+    // black → white wash
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+    const t = introWhiteT / INTRO_WHITE_DUR;
+    ctx.fillStyle = `rgba(255,255,255,${t})`;
+    ctx.fillRect(0, 0, W, H);
+  } else if (introPhase === 'fadeIn') {
+    // white pulled away, revealing the game
+    const a = 1 - (introFadeT / INTRO_FADE_DUR);
+    if (a > 0) {
+      ctx.fillStyle = `rgba(255,255,255,${a})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+}
 
 function drawStoryModal() {
   if (!storyModalOpen) return;
@@ -4111,14 +4201,14 @@ if (save.achievements && save.achievements.allColors) applyRainbow(true);
 level = save.level || 1;
 genLevel(level);
 renderShop();
-// first ever launch → introduce the story; then never again unless the player asks
+// first ever launch → play the intro cutscene; then never again unless the player asks
 if (!save.firstSeen) {
-  storyModalOpen = true;
+  playIntro();
   save.firstSeen = true;
   saveGame();
 }
 document.getElementById('story-link').addEventListener('click', () => {
-  storyModalOpen = true;
+  playIntro();
   canvas.focus();
 });
 requestAnimationFrame(t => { lastT = t; tick(t); });
